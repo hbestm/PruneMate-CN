@@ -37,9 +37,9 @@ A sleek, lightweight web interface to **automatically clean up Docker resources*
 ## 📷 Screenshots
 
 ### Main Dashboard
-The overall look of the PruneMate dashboard
+The overall look and feel of the PruneMate dashboard
 <p align="center">
-  <img width="400" height="700" src="https://github.com/user-attachments/assets/797c6c13-3078-4afb-a0db-2e05e16fba33" /> 
+  <img width="400" height="700" src="https://github.com/user-attachments/assets/3e9a6fc0-01c3-4da2-a095-d6f9480d4416" /> 
 </p>
 
 ### Main Dashboard - Schedule Configuration
@@ -60,8 +60,13 @@ Select which Docker resources to clean up and configure advanced options.
 Set up notifications via Gotify or ntfy.sh to stay informed about cleanup results.
 
 <p align="center">
-  <iimg width="400" height="400" alt="prunemate-notifications" src="https://github.com/user-attachments/assets/4dab89c5-a6fe-482c-9b0b-09464b73933c" /> 
+  <img width="400" height="400" alt="prunemate-notifications" src="https://github.com/user-attachments/assets/4a6be018-588e-4596-871c-1b35a92a7deb" /> 
 </p>
+
+<p align="center">
+  <img width="400" height="400" alt="prunemate-notifications" src="https://github.com/user-attachments/assets/73a06c4d-fffa-40eb-a010-239d7d364004" /> 
+</p>
+
 
 ### Cleanup Results
 Get detailed statistics notifications about what was cleaned and how much space was reclaimed.
