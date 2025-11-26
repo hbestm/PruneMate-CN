@@ -94,7 +94,7 @@ services:
     image: anoniemerd/prunemate:latest
     container_name: prunemate
     ports:
-      - 7676:8080
+      - "7676:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./logs:/var/log
