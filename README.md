@@ -86,24 +86,22 @@ ntfy :
 
 ## 🐳 Docker Compose Configuration
 
-Complete example of `docker-compose.yaml`:
+`docker-compose.yaml`:
 
 ```yaml
-version: '3.8'
-
 services:
   prunemate:
-    build: .
+    image: anoniemerd/prunemate:latest
     container_name: prunemate
     ports:
-      - "7676:8080"
+      - 7676:8080
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro  # Docker access (read-only)
-      - ./logs:/var/log                                # Persistent logs
-      - ./config:/config                               # Persistent configuration
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./logs:/var/log
+      - ./config:/config
     environment:
-      - PRUNEMATE_TZ=Europe/Amsterdam                  # Your timezone (default: UTC)
-      - PRUNEMATE_TIME_24H=true                        # Time format (default: true)
+      - PRUNEMATE_TZ=Europe/Amsterdam # Change this to your desired timezone
+      - PRUNEMATE_TIME_24H=true #false for 12-Hour format (AM/PM)
     restart: unless-stopped
 ```
 
@@ -123,7 +121,6 @@ services:
 | `PRUNEMATE_TZ` | `UTC` | Timezone for scheduling (e.g., `Europe/Amsterdam`, `America/New_York`) |
 | `PRUNEMATE_TIME_24H` | `true` | Time format: `true` for 24-hour, `false` for 12-hour (AM/PM) |
 | `PRUNEMATE_CONFIG` | `/config/config.json` | Path to configuration file |
-| `PRUNEMATE_SECRET` | `prunemate-secret-key` | Flask secret key (change in production) |
 
 ### Web Interface Settings
 
@@ -167,41 +164,6 @@ Access the web interface at `http://localhost:7676/` (or your server IP) to conf
 
 /var/log/
 └── prunemate.log        # Application logs (rotating, 5MB max)
-```
-
----
-
-## 🔧 Managing PruneMate
-
-### View Logs
-
-```bash
-docker logs -f prunemate
-```
-
-Or check the persistent log file:
-
-```bash
-tail -f logs/prunemate.log
-```
-
-### Restart
-
-```bash
-docker-compose restart
-```
-
-### Update
-
-```bash
-docker-compose pull
-docker-compose up -d
-```
-
-### Stop
-
-```bash
-docker-compose down
 ```
 
 ---
