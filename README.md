@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/version-1.2.2-blue?style=flat-square"/>
   <img src="https://img.shields.io/badge/python-3.10%2B-green?style=flat-square"/>
   <img src="https://img.shields.io/badge/docker-compose-0db7ed?style=flat-square"/>
-  <img src="https://img.shields.io/badge/license-MIT-yellow?style=flat-square"/>
+  <img src="https://img.shields.io/badge/license-AGPLv3-orange?style=flat-square"/>
 </p>
 
 A sleek, lightweight web interface to **automatically clean up Docker resources** on a schedule. Built with Python (Flask) · Docker SDK · APScheduler · Gunicorn
@@ -277,7 +277,19 @@ Have questions or need help?
 🐙 GitHub: <https://github.com/anoniemerd>  
 📦 Repository: <https://github.com/anoniemerd/PruneMate>
 
-**License:** MIT License  
+## 📜 License — AGPLv3
+
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+By using, modifying, or distributing this software, you **must**:
+
+- Keep this copyright notice
+- Disclose source code of any modified version
+- Disclose source code if used to provide a network service
+- License any derivative works under **AGPL-3.0**
+
+See the full license text in: [`LICENSE`](./LICENSE)
+
 © 2025 – PruneMate Project
 
 ---
