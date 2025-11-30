@@ -46,7 +46,8 @@ A sleek, lightweight web interface to **automatically clean up Docker resources*
 The overall look and feel of the PruneMate dashboard
 
 <p align="center">
-  <img width="400" height="800" src="https://github.com/user-attachments/assets/45351bc6-8b4b-4b99-a852-1e6a8a1c51c6" />
+  <img width="400" height="800" src="https://github.com/user-attachments/assets/4e4eb62b-f812-4ec3-8fed-02aedca174db" />
+
 </p>
 
 ### Main Dashboard - All-Time Statistics
@@ -63,11 +64,18 @@ Configure when and how often PruneMate should clean up your Docker resources.
   <img width="400" height="400" alt="prunemate-schedule" src="https://github.com/user-attachments/assets/3a822897-5ede-4476-b570-f4d8adf37867" /> 
 </p>
 
-### Cleanup Options & Settings
+### Cleanup Options
 Select which Docker resources to clean up and configure advanced options.
 
 <p align="center">
   <img width="400" height="400" alt="prunemate-cleanup" src="https://github.com/user-attachments/assets/70ae1e8f-49a1-4c89-ac46-685d804ee3db" />
+</p>
+
+### External Docker hosts
+Add external Docker hosts via [docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy)
+
+<p align="center">
+  <img width="400" height="400" alt="prunemate-cleanup" src="https://github.com/user-attachments/assets/28abdbe4-bd9e-4272-a6fc-24a4a8dc83bb" />
 </p>
 
 ### Notification Settings
@@ -77,13 +85,13 @@ Set up notifications via Gotify or ntfy.sh to stay informed about cleanup result
   <img width="400" height="400" alt="prunemate-notifications" src="https://github.com/user-attachments/assets/73a06c4d-fffa-40eb-a010-239d7d364004" /> 
 </p>
 
-
 ### Cleanup Results
 Get detailed statistics notifications about what was cleaned and how much space was reclaimed.
 
 Gotify :
 <p align="center">
-  <img width="400" height="400" alt="prunemate-results" src="https://github.com/user-attachments/assets/26c1eccb-96c1-4385-8a1a-ef8c4587909e" /> 
+  <img width="400" height="400" alt="prunemate-results" src="https://github.com/user-attachments/assets/757ce7d2-7e7e-409b-ae01-745262a067c7" />
+
 </p>
 
 ntfy :
