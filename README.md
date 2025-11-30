@@ -72,10 +72,6 @@ Select which Docker resources to clean up and configure advanced options.
 Set up notifications via Gotify or ntfy.sh to stay informed about cleanup results.
 
 <p align="center">
-  <img width="400" height="400" alt="prunemate-notifications" src="https://github.com/user-attachments/assets/4a6be018-588e-4596-871c-1b35a92a7deb" /> 
-</p>
-
-<p align="center">
   <img width="400" height="400" alt="prunemate-notifications" src="https://github.com/user-attachments/assets/73a06c4d-fffa-40eb-a010-239d7d364004" /> 
 </p>
 
