@@ -199,10 +199,6 @@ docker run -d \
 http://<your-server-ip>:7676/
 ```
 
-
-
-
-
 ---
 
 ## 🐳 Additional Configuration
@@ -256,6 +252,87 @@ Access the web interface at `http://localhost:7676/` (or your server IP) to conf
 5. **Updates all-time statistics** with cumulative data (space, counts, timestamps)
 6. **Sends notification** (if configured and enabled)
 7. **Logs everything** with timezone-aware timestamps
+
+### Architecture Flowchart
+
+```mermaid
+flowchart TD
+    Start([Start PruneMate]) --> WebUI[Web Interface<br/>Flask + Gunicorn<br/>Port 8080]
+    Start --> Scheduler[APScheduler<br/>Checks every minute]
+    
+    WebUI --> |User configures| ConfigFile[(config.json<br/>/config/)]
+    
+    Scheduler --> CheckTime{Time to<br/>run prune?}
+    CheckTime --> |No| Wait[Wait 1 minute]
+    Wait --> Scheduler
+    
+    CheckTime --> |Yes| LoadConfig[Load config.json]
+    LoadConfig --> CheckLock{Lock file<br/>exists?}
+    CheckLock --> |Yes| Skip[Skip run<br/>Already running]
+    Skip --> Scheduler
+    
+    CheckLock --> |No| CreateLock[Create prunemate.lock]
+    CreateLock --> ConnectDocker[Connect to Docker<br/>via Unix socket]
+    
+    ConnectDocker --> MultiHost{Multiple<br/>hosts enabled?}
+    MultiHost --> |Yes| ConnectRemote[Connect to remote hosts<br/>via docker-socket-proxy]
+    MultiHost --> |No| LocalOnly[Local host only]
+    
+    ConnectRemote --> PruneLoop[Execute prune operations<br/>per host]
+    LocalOnly --> PruneLoop
+    
+    PruneLoop --> CheckContainers{Prune<br/>containers?}
+    CheckContainers --> |Yes| PruneContainers[docker container prune]
+    CheckContainers --> |No| CheckImages{Prune<br/>images?}
+    
+    PruneContainers --> CheckImages
+    CheckImages --> |Yes| PruneImages[docker image prune -a]
+    CheckImages --> |No| CheckNetworks{Prune<br/>networks?}
+    
+    PruneImages --> CheckNetworks
+    CheckNetworks --> |Yes| PruneNetworks[docker network prune]
+    CheckNetworks --> |No| CheckVolumes{Prune<br/>volumes?}
+    
+    PruneNetworks --> CheckVolumes
+    CheckVolumes --> |Yes| PruneVolumes[docker volume prune]
+    CheckVolumes --> |No| CollectStats[Collect statistics<br/>Space reclaimed, items deleted]
+    
+    PruneVolumes --> CollectStats
+    
+    CollectStats --> UpdateStats[Update stats.json<br/>Cumulative totals]
+    UpdateStats --> CheckNotif{Notifications<br/>enabled?}
+    
+    CheckNotif --> |No| LogResults[Write to prunemate.log]
+    CheckNotif --> |Yes| CheckChanges{Only notify<br/>on changes?}
+    
+    CheckChanges --> |Yes & No changes| LogResults
+    CheckChanges --> |No or Has changes| SendNotif[Send notification<br/>Gotify or ntfy.sh]
+    
+    SendNotif --> LogResults
+    LogResults --> RemoveLock[Remove prunemate.lock]
+    RemoveLock --> UpdateUI[Update web UI<br/>with latest stats]
+    UpdateUI --> Scheduler
+    
+    WebUI -.-> |Manual trigger| CreateLock
+    
+    style Start fill:#4a90e2
+    style WebUI fill:#50c878
+    style Scheduler fill:#9b59b6
+    style ConfigFile fill:#f39c12
+    style PruneLoop fill:#e74c3c
+    style UpdateStats fill:#16a085
+    style SendNotif fill:#3498db
+```
+
+**Key Components:**
+
+- 🌐 **Flask Web Interface** - User configuration and manual trigger
+- ⏰ **APScheduler** - Background scheduler checking every minute
+- 🐳 **Docker SDK** - Direct communication with Docker daemon(s)
+- 📁 **Persistent Storage** - Config and statistics in `/config/`
+- 🔒 **Lock Mechanism** - Prevents concurrent prune operations
+- 📊 **Statistics Tracking** - Cumulative data across all runs
+- 🔔 **Notification System** - Gotify or ntfy.sh integration
 
 ### File Structure
 
@@ -401,7 +478,7 @@ Click **Run now** and check logs for successful connection to all hosts.
 
 ---
 
-## 📜 Changelog
+## 📜 Release Notes
 
 ### Version 1.2.6 (November 2025)
 - 🐳 **NEW** Multi-host support - Manage multiple Docker hosts from one interface
@@ -413,83 +490,8 @@ Click **Run now** and check logs for successful connection to all hosts.
 - 🐛 **Fixed:** Critical checkbox handling bug affecting all prune and notification toggles
 - 🔧 **Improved:** Code quality improvements and better error handling
 
+📖 **[View full changelog](CHANGELOG.md)**
 
-### Version 1.2.5 (November 2025)
-- 🐛 **Fixed:** Monthly schedule bug where jobs never ran in shorter months
-  - Jobs configured for day 30-31 now run on last day of shorter months (e.g., Feb 28/29)
-  - Uses `calendar.monthrange()` to determine actual last day of each month
-- 🐛 **Fixed:** Configuration deep copy bug causing shared nested dictionaries
-  - All `.copy()` operations replaced with proper deep copy via `json.loads(json.dumps())`
-  - Prevents config corruption when modifying nested notification settings
-  - Fixed in 4 locations: initialization + 3 in `load_config()`
-- 🐛 **Fixed:** KeyError in legacy Gotify config migration
-  - Now safely checks if notifications dict exists before accessing nested keys
-  - Uses `.get()` with fallback values to prevent crashes on old config files
-- 🔧 **Improved:** Eliminated duplicate code - moved `_validate_time()` to module level
-  - Removed identical function definitions from `/update` and `/test-notification` routes
-  - Renamed to `validate_time()` as public module-level function
-- 📝 **Improved:** Better log clarity for prune operations
-  - Volumes: "Pruning volumes (unused anonymous volumes only)…"
-- 🧹 **Cleanup:** Moved `calendar` import from inline to top-level imports
-
-### Version 1.2.4 (November 2025)
-- 📊 **NEW:** All-Time Statistics dashboard showing cumulative prune data
-  - Total space reclaimed across all runs
-  - Counters for containers, images, networks, volumes deleted
-  - Total prune runs with first/last run timestamps
-  - Statistics persist in `/config/stats.json`
-- 🐛 **Fixed:** 12-hour time format backend handling in `/update` and `/test-notification` routes
-- 🐛 **Fixed:** Minute display now shows leading zeros (e.g., "7:04" instead of "7:4")
-- 🐛 **Fixed:** Time input validation now runs on page load (`initTimeClamp()`)
-- 📝 **Improved:** All functions now have proper Python docstrings for better IDE support
-- 🔧 **Improved:** Code quality improvements and better error handling
-
-### Version 1.2.3 (November 2025)
-- 🏗️ Added ARM64 architecture installation instructions (Apple Silicon, ARM servers, Raspberry Pi)
-- 📝 All functions documented in English for better code maintainability
-- 📜 Changed license from MIT to AGPLv3
-- 📚 Improved documentation with Quick Start guide
-
-### Version 1.2.2 (November 2025)
-- ✨ Added 12/24-hour time format support via `PRUNEMATE_TIME_24H` environment variable
-- 🌍 Improved timezone handling across all components (logs, scheduling, notifications)
-- 🎨 Enhanced UI with custom time picker for 12-hour mode (hour 1-12, minutes, AM/PM selector)
-- 🐛 Fixed config synchronization issues in multi-worker setup
-- ⚡ Simplified architecture: reduced from 2 workers to 1 for better reliability
-- 📝 Implemented silent config loading to reduce log noise
-- 🔧 Improved input validation with instant clamping and 2-digit limits
-- 🔒 Added thread-safe configuration saving with file locking
-
-### Version 1.2.1 (November 2025)
-- 🐛 Fixed scheduler not triggering at configured times
-- 🔄 Config now reloads before each scheduled check to ensure synchronization
-- 🔒 Added thread-safe config saving mechanism
-- 📊 Improved logging with timezone-aware timestamps
-
-### Version 1.2.0 (November 2025)
-- 🔔 Added notification support (Gotify & ntfy.sh)
-- 🎨 Complete UI redesign with modern dark theme
-- 📊 Enhanced statistics and detailed cleanup reporting
-- 🎯 Added "only notify on changes" option
-- 🔘 Improved button animations and hover effects
-
-### Version 1.1.0 (October 2025)
-- 🎉 Initial release
-- 🕐 Daily, Weekly, and Monthly scheduling
-- 🧹 Selective cleanup options (containers, images, networks, volumes)
-- 🌐 Web interface for configuration
-- 📁 Persistent configuration and logging
-
----
-
-## 📬 Support
-
-Have questions or need help?
-
-- 🐛 **Bug reports:** [Open an issue on GitHub](https://github.com/anoniemerd/PruneMate/issues)
-- 💡 **Feature requests:** [Open an issue on GitHub](https://github.com/anoniemerd/PruneMate/issues)
-- 💬 **Questions & Discussion:** [Start a discussion on GitHub](https://github.com/anoniemerd/PruneMate/discussions)
-- ⭐ **Like PruneMate?** Give it a star!
 
 ---
 
