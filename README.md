@@ -199,9 +199,7 @@ docker run -d \
 http://<your-server-ip>:7676/
 ```
 
----
 
-## 🐳 Additional Configuration
 
 **Volume explanations:**
 - `/var/run/docker.sock` - Required for Docker API access
@@ -324,16 +322,6 @@ flowchart TD
     style SendNotif fill:#3498db
 ```
 
-**Key Components:**
-
-- 🌐 **Flask Web Interface** - User configuration and manual trigger
-- ⏰ **APScheduler** - Background scheduler checking every minute
-- 🐳 **Docker SDK** - Direct communication with Docker daemon(s)
-- 📁 **Persistent Storage** - Config and statistics in `/config/`
-- 🔒 **Lock Mechanism** - Prevents concurrent prune operations
-- 📊 **Statistics Tracking** - Cumulative data across all runs
-- 🔔 **Notification System** - Gotify or ntfy.sh integration
-
 ### File Structure
 
 ```
@@ -368,6 +356,39 @@ PruneMate tracks cumulative statistics across all prune runs:
 - Date/time display in UI follows configured 12h/24h format
 - Statistics survive container restarts and updates
 - Auto-refresh after manual prune runs via web interface
+
+---
+
+## 🔔 Notification Setup
+
+### Gotify
+
+[Gotify](https://gotify.net/) is a self-hosted notification service.
+
+**Setup steps:**
+1. Install and run Gotify server
+2. Create a new application in Gotify
+3. Copy the application token
+4. Configure in PruneMate:
+   - **Provider:** Gotify
+   - **URL:** `https://your-gotify-server.com`
+   - **Token:** Your application token
+
+### ntfy.sh
+
+[ntfy.sh](https://ntfy.sh/) is a simple pub-sub notification service (self-hosted or public).
+
+**Setup steps:**
+1. Choose a unique topic name (e.g., `prunemate-alerts`)
+2. Configure in PruneMate:
+   - **Provider:** ntfy
+   - **URL:** `https://ntfy.sh` (or your self-hosted instance)
+   - **Topic:** Your chosen topic name
+
+**Subscribe to notifications:**
+- **Web:** Visit `https://ntfy.sh/your-topic`
+- **Mobile:** Install the ntfy app ([Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy) / [iOS](https://apps.apple.com/app/ntfy/id1625396347)) and subscribe to your topic
+- **Desktop:** Use ntfy desktop app or web browser
 
 ---
 
@@ -418,40 +439,6 @@ Click **Run now** and check logs for successful connection to all hosts.
 
 ---
 
-## 🔔 Notification Setup
-
-### Gotify
-
-[Gotify](https://gotify.net/) is a self-hosted notification service.
-
-**Setup steps:**
-1. Install and run Gotify server
-2. Create a new application in Gotify
-3. Copy the application token
-4. Configure in PruneMate:
-   - **Provider:** Gotify
-   - **URL:** `https://your-gotify-server.com`
-   - **Token:** Your application token
-
-### ntfy.sh
-
-[ntfy.sh](https://ntfy.sh/) is a simple pub-sub notification service (self-hosted or public).
-
-**Setup steps:**
-1. Choose a unique topic name (e.g., `prunemate-alerts`)
-2. Configure in PruneMate:
-   - **Provider:** ntfy
-   - **URL:** `https://ntfy.sh` (your self-hosted instance)
-   - **Topic:** Your chosen topic name
-
-**Subscribe to notifications:**
-- **Web:** Visit `https://ntfy.sh/your-topic`
-- **Mobile:** Install the ntfy app ([Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy) / [iOS](https://apps.apple.com/app/ntfy/id1625396347)) and subscribe to your topic
-- **Desktop:** Use ntfy desktop app or web browser
-
-
----
-
 ## 🧠 Troubleshooting
 
 | Problem | Solution |
@@ -492,6 +479,16 @@ Click **Run now** and check logs for successful connection to all hosts.
 
 📖 **[View full changelog](CHANGELOG.md)**
 
+---
+
+## 📬 Support
+
+Have questions or need help?
+
+- 🐛 **Bug reports:** [Open an issue on GitHub](https://github.com/anoniemerd/PruneMate/issues)
+- 💡 **Feature requests:** [Open an issue on GitHub](https://github.com/anoniemerd/PruneMate/issues)
+- 💬 **Questions & Discussion:** [Start a discussion on GitHub](https://github.com/anoniemerd/PruneMate/discussions)
+- ⭐ **Like PruneMate?** Give it a star!
 
 ---
 
@@ -501,7 +498,7 @@ Click **Run now** and check logs for successful connection to all hosts.
 🐙 GitHub: <https://github.com/anoniemerd>  
 📦 Repository: <https://github.com/anoniemerd/PruneMate>
 
-## 📜 License — AGPLv3
+### 📜 License — AGPLv3
 
 This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
 
@@ -514,7 +511,7 @@ By using, modifying, or distributing this software, you **must**:
 
 See the full license text in: [`LICENSE`](./LICENSE)
 
-## ⚠️ Disclaimer
+### ⚠️ Disclaimer
 
 **USE AT YOUR OWN RISK.** PruneMate is provided "as is" without warranty of any kind. The author(s) and contributors are not responsible for:
 - Data loss from pruned Docker resources

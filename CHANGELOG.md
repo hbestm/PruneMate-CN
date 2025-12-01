@@ -2,7 +2,7 @@
 
 All notable changes to PruneMate will be documented in this file.
 
-## [1.2.6] - November 2025
+## [V1.2.6] - November 2025
 
 ### Added
 - 🐳 **Multi-host support** - Manage multiple Docker hosts from one interface
@@ -20,7 +20,15 @@ All notable changes to PruneMate will be documented in this file.
 
 ---
 
-## [1.2.5] - November 2025
+## [V1.2.5] - November 2025
+
+### Improved
+- 🔧 Eliminated duplicate code - moved `_validate_time()` to module level
+  - Removed identical function definitions from `/update` and `/test-notification` routes
+  - Renamed to `validate_time()` as public module-level function
+- 📝 Better log clarity for prune operations
+  - Volumes: "Pruning volumes (unused anonymous volumes only)…"
+- 🧹 Moved `calendar` import from inline to top-level imports
 
 ### Fixed
 - 🐛 Monthly schedule bug where jobs never ran in shorter months
@@ -34,17 +42,9 @@ All notable changes to PruneMate will be documented in this file.
   - Now safely checks if notifications dict exists before accessing nested keys
   - Uses `.get()` with fallback values to prevent crashes on old config files
 
-### Improved
-- 🔧 Eliminated duplicate code - moved `_validate_time()` to module level
-  - Removed identical function definitions from `/update` and `/test-notification` routes
-  - Renamed to `validate_time()` as public module-level function
-- 📝 Better log clarity for prune operations
-  - Volumes: "Pruning volumes (unused anonymous volumes only)…"
-- 🧹 Moved `calendar` import from inline to top-level imports
-
 ---
 
-## [1.2.4] - November 2025
+## [V1.2.4] - November 2025
 
 ### Added
 - 📊 **All-Time Statistics dashboard** showing cumulative prune data
@@ -53,32 +53,30 @@ All notable changes to PruneMate will be documented in this file.
   - Total prune runs with first/last run timestamps
   - Statistics persist in `/config/stats.json`
 
+### Improved
+- 📝 All functions now have proper Python docstrings for better IDE support
+- 🔧 Code quality improvements and better error handling
+
 ### Fixed
 - 🐛 12-hour time format backend handling in `/update` and `/test-notification` routes
 - 🐛 Minute display now shows leading zeros (e.g., "7:04" instead of "7:4")
 - 🐛 Time input validation now runs on page load (`initTimeClamp()`)
 
-### Improved
-- 📝 All functions now have proper Python docstrings for better IDE support
-- 🔧 Code quality improvements and better error handling
-
 ---
 
-## [1.2.3] - November 2025
+## [V1.2.3] - November 2025
 
 ### Added
 - 🏗️ ARM64 architecture installation instructions (Apple Silicon, ARM servers, Raspberry Pi)
 
-### Changed
-- 📜 License changed from MIT to AGPLv3
-
 ### Improved
+- 📜 License changed from MIT to AGPLv3
 - 📝 All functions documented in English for better code maintainability
 - 📚 Documentation improvements with Quick Start guide
 
 ---
 
-## [1.2.2] - November 2025
+## [V1.2.2] - November 2025
 
 ### Added
 - ✨ 12/24-hour time format support via `PRUNEMATE_TIME_24H` environment variable
@@ -96,32 +94,32 @@ All notable changes to PruneMate will be documented in this file.
 
 ---
 
-## [1.2.1] - November 2025
-
-### Fixed
-- 🐛 Scheduler not triggering at configured times
-- 🔄 Config reloads before each scheduled check to ensure synchronization
+## [V1.2.1] - November 2025
 
 ### Improved
 - 🔒 Thread-safe config saving mechanism
 - 📊 Logging with timezone-aware timestamps
 
+### Fixed
+- 🐛 Scheduler not triggering at configured times
+- 🔄 Config reloads before each scheduled check to ensure synchronization
+
 ---
 
-## [1.2.0] - November 2025
+## [V1.2.0] - November 2025
 
 ### Added
 - 🔔 Notification support (Gotify & ntfy.sh)
 - 🎯 "Only notify on changes" option
 - 📊 Enhanced statistics and detailed cleanup reporting
 
-### Changed
+### Improved
 - 🎨 Complete UI redesign with modern dark theme
 - 🔘 Improved button animations and hover effects
 
 ---
 
-## [1.1.0] - October 2025
+## [V1.1.0] - October 2025
 
 ### Added
 - 🎉 Initial release
