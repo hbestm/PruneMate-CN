@@ -478,7 +478,7 @@ Click **Run now** and check logs for successful connection to all hosts.
   - Priority system: Bearer token → Basic Auth → unauthenticated
   - RFC 3986 compliant URL parsing for embedded credentials
 - 🔒 **NEW** Enhanced credential security - Passwords and tokens masked in all log output
-- 🎨 **Improved:** Logo enhancement by [@shollyethan](https://github.com/shollyethan)
+- 🎨 **Improved:** Logo enhancement by [@shollyethan](https://github.com/shollyethan) + added to the Self-Hosted Dashboard Icons on https://selfh.st/icons/
 - 📏 **Improved:** Logo size increased from 76×76px to 82×82px
 - 📱 **Improved:** Better mobile support - Enhanced responsive design for smartphone usage
 - 🔔 **Improved:** Notification panel height increased to 900px with enhanced scrolling
