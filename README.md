@@ -489,11 +489,6 @@ Click **Run now** and check logs for successful connection to all hosts.
 - 🐛 **Fixed:** Stats type safety issues with corrupt JSON files
 - 🐛 **Fixed:** Notification panel button visibility on smaller screens
 
-### Version 1.2.6 (November 2025)
-- 🐳 **NEW** Multi-host support - Manage multiple Docker hosts from one interface
-- 🔔 **Improved:** Notification formatting with enhanced layout and per-host breakdown
-- 🐛 **Fixed:** Critical checkbox handling bug affecting all prune and notification toggles
-
 📖 **[View full changelog](CHANGELOG.md)**
 
 ---
