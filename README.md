@@ -56,7 +56,7 @@ The overall look and feel of the PruneMate dashboard
 Track cumulative prune statistics showing total space reclaimed, resources deleted, and run history.
 
 <p align="center">
-  <img width="400" height="400" alt="prunemate-statistics" src="https://github.com/user-attachments/assets/206d9787-58d8-4756-ab7f-d5b9dccfad5d" /> 
+  <img width="400" height="400" alt="prunemate-statistics" src="https://github.com/user-attachments/assets/0eae9ddb-f507-404a-b187-a9ff8cc7488c" /> 
 </p>
 
 ### Schedule Configuration
@@ -86,6 +86,14 @@ Set up notifications via Gotify or ntfy.sh to stay informed about cleanup result
 <p align="center">
   <img width="400" height="400" alt="prunemate-notifications" src="https://github.com/user-attachments/assets/73a06c4d-fffa-40eb-a010-239d7d364004" /> 
 </p>
+
+### Prune preview
+A brief interface that shows which Docker resources will be pruned during the next cleanup run, either manually triggered or scheduled.
+
+<p align="center">
+  <img width="400" height="400" alt="prunemate-preview" src="https://github.com/user-attachments/assets/34fb445d-8956-46e8-84df-b6718db3f556" /> 
+</p>
+
 
 ### Cleanup Results
 Get detailed statistics notifications about what was cleaned and how much space was reclaimed.
@@ -442,6 +450,10 @@ Click **Run now** and check logs for successful connection to all hosts.
 ## 🏠 Homepage Dashboard Integration
 
 PruneMate provides a custom API endpoint at `/api/stats` that returns all-time statistics in a format compatible with [Homepage](https://gethomepage.dev/) dashboard widgets.
+
+<p align="center">
+  <img width="400" height="400" alt="prunemate-homepage" src="https://github.com/user-attachments/assets/942169f6-bc16-4cef-8b46-3ac012fe7fec" /> 
+</p>
 
 ### Setup
 
