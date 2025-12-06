@@ -2,6 +2,42 @@
 
 All notable changes to PruneMate will be documented in this file.
 
+## [V1.2.8] - December 2025
+
+### Added
+- 🔍 **Prune preview before manual execution** - See exactly what will be deleted before running manual prune
+  - Shows detailed list of containers, images, networks, and volumes to be removed
+  - Per-host breakdown for multi-host setups
+  - Two-step confirmation process for safer manual pruning
+  - Only applies to manual "Run now" executions (scheduled runs remain automatic)
+  - Auto-save functionality: checkbox states persist when switching between preview and settings
+- 🏠 **Homepage dashboard integration** - New `/api/stats` endpoint for Homepage widget support
+  - Returns all-time statistics in customapi-compatible format
+  - Includes human-readable space reclaimed field (`spaceReclaimedHuman`)
+  - Relative time formatting for last run (`lastRunText` shows "2h ago", "3d ago", etc.)
+  - Easy integration with Homepage dashboard services
+
+### Improved
+- 🧹 **Image prune behavior** - Now removes ALL unused images (not just dangling)
+  - Uses `filters={"dangling": False}` for comprehensive cleanup
+  - Matches preview display with actual prune behavior
+  - More aggressive space reclamation while maintaining safety
+- 📦 **Volume prune behavior** - Explicitly includes named volumes
+  - Uses `filters={"all": True}` to remove all unused volumes
+  - Named volumes are pruned alongside anonymous volumes
+  - Preview accurately shows all volumes to be removed
+
+### Fixed
+- 🐛 **Checkbox reading bug** - Preview modal now correctly reads checkbox states
+  - Added missing `id` attributes to all four checkboxes
+  - JavaScript `getElementById()` now works correctly
+  - Fixed "No prune options selected" error when checkboxes were checked
+- 🐛 **JavaScript variable scope** - Fixed redeclaration errors in time formatting
+  - Resolved Jinja2 template variable conflicts in 12h/24h time display
+  - Cleaner variable naming for better maintainability
+
+---
+
 ## [V1.2.7] - December 2025
 
 ### Added

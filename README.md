@@ -8,7 +8,7 @@
 <p align="center"><em>Docker image & resource cleanup helper, on a schedule!</em></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.2.7-purple?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/version-1.2.8-purple?style=for-the-badge"/>
   <img src="https://img.shields.io/badge/python-3.12-yellow?style=for-the-badge&logo=python&logoColor=ffffff"/>
   <img src="https://img.shields.io/badge/docker-compose-0db7ed?style=for-the-badge&logo=docker&logoColor=ffffff"/>
   <img src="https://img.shields.io/badge/license-AGPLv3-orange?style=for-the-badge"/>
@@ -21,21 +21,23 @@ A sleek, lightweight web interface to **automatically clean up Docker resources*
 
 **Keep your Docker host tidy with scheduled cleanup of unused images, containers, networks, and volumes.**
 
-> ⚠️ **DISCLAIMER**: PruneMate deletes Docker resources. Ensure you understand what will be pruned before enabling automated schedules. The author is not responsible for any data loss or system issues. **Use at your own risk.**
+> ⚠️ **DISCLAIMER**: PruneMate uses Docker's native `prune` commands to delete unused resources. This means it removes containers, images, networks, and volumes that Docker considers "unused" - be careful with volumes as they may contain important data. Ensure you understand what will be pruned before enabling automated schedules. The author is not responsible for any data loss or system issues. **Use at your own risk.**
 
 ---
 
 ## ✨ Features
 
 - 🕐 **Flexible scheduling** - Daily, Weekly, or Monthly cleanup runs
+- 🔍 **Prune preview** - See exactly what will be deleted before executing manual prune operations
 - 🌍 **Timezone aware** - Configure your local timezone
 - 🕒 **12/24-hour time format** - Choose your preferred time display
 - 🐳 **Multi-host support** - Manage multiple Docker hosts from one interface (requires docker-socket-proxy on remote hosts)
 - 🧹 **Selective cleanup** - Choose what to prune: containers, images, networks, volumes
 - 📊 **All-Time Statistics** - Track cumulative space reclaimed and resources deleted across all runs
+- 🏠 **Homepage integration** - Display statistics in your Homepage dashboard
 - 🔔 **Smart notifications** - Gotify or ntfy.sh support with Bearer token & Basic Auth, optional change-only alerts
 - 🎨 **Modern UI** - Dark theme with smooth animations and responsive design
-- 🔒 **Safe & controlled** - Manual trigger option and detailed logging
+- 🔒 **Safe & controlled** - Manual trigger with preview and detailed logging
 - 📈 **Detailed reports** - See exactly what was cleaned and how much space was reclaimed
 
 ---
@@ -255,71 +257,62 @@ Access the web interface at `http://localhost:7676/` (or your server IP) to conf
 
 ```mermaid
 flowchart TD
-    Start([Start PruneMate]) --> WebUI[Web Interface<br/>Flask + Gunicorn<br/>Port 8080]
-    Start --> Scheduler[APScheduler<br/>Checks every minute]
+    Start([PruneMate]) --> WebUI[Web UI<br/>Port 8080]
+    Start --> Scheduler[Scheduler<br/>every minute]
+    Start --> API[API Endpoints<br/>/api/stats]
     
-    WebUI --> |User configures| ConfigFile[(config.json<br/>/config/)]
+    WebUI --> |Configure| Config[(config.json<br/>• Schedule<br/>• Prune options<br/>• Notifications<br/>• Remote hosts)]
+    WebUI --> |View Stats| StatsUI[Display stats.json<br/>All-time metrics]
+    WebUI --> |Manual/Preview| Manual[Manual Trigger]
+    API --> |Homepage Widget| StatsUI
     
-    Scheduler --> CheckTime{Time to<br/>run prune?}
-    CheckTime --> |No| Wait[Wait 1 minute]
-    Wait --> Scheduler
+    Scheduler --> CheckTime{Scheduled<br/>time?}
+    CheckTime --> |No| Scheduler
+    CheckTime --> |Yes| LoadConfig[Load Config]
     
-    CheckTime --> |Yes| LoadConfig[Load config.json]
-    LoadConfig --> CheckLock{Lock file<br/>exists?}
-    CheckLock --> |Yes| Skip[Skip run<br/>Already running]
-    Skip --> Scheduler
+    Manual --> |Preview| Preview[Get Preview<br/>Per-host breakdown<br/>Show resources]
+    Preview --> |User confirms| LoadConfig
     
-    CheckLock --> |No| CreateLock[Create prunemate.lock]
-    CreateLock --> ConnectDocker[Connect to Docker<br/>via Unix socket]
+    LoadConfig --> Lock{Already<br/>running?}
+    Lock --> |Yes| Skip[Skip]
+    Lock --> |No| CheckHosts{Remote<br/>hosts?}
     
-    ConnectDocker --> MultiHost{Multiple<br/>hosts enabled?}
-    MultiHost --> |Yes| ConnectRemote[Connect to remote hosts<br/>via docker-socket-proxy]
-    MultiHost --> |No| LocalOnly[Local host only]
+    CheckHosts --> |Yes| Remote[Local + Remote Hosts<br/>via docker-socket-proxy<br/>tcp://host:2375]
+    CheckHosts --> |No| Local[Local Host Only<br/>unix:///var/run/docker.sock]
     
-    ConnectRemote --> PruneLoop[Execute prune operations<br/>per host]
-    LocalOnly --> PruneLoop
+    Remote --> CheckOptions
+    Local --> CheckOptions
     
-    PruneLoop --> CheckContainers{Prune<br/>containers?}
-    CheckContainers --> |Yes| PruneContainers[docker container prune]
-    CheckContainers --> |No| CheckImages{Prune<br/>images?}
+    CheckOptions{Check enabled<br/>prune options}
+    CheckOptions --> |Containers ✓| PruneC[Prune Containers<br/>stopped/exited]
+    CheckOptions --> |Images ✓| PruneI[Prune Images<br/>all unused]
+    CheckOptions --> |Networks ✓| PruneN[Prune Networks<br/>unused]
+    CheckOptions --> |Volumes ✓| PruneV[Prune Volumes<br/>all unused + named]
     
-    PruneContainers --> CheckImages
-    CheckImages --> |Yes| PruneImages[docker image prune -a]
-    CheckImages --> |No| CheckNetworks{Prune<br/>networks?}
+    PruneC --> Aggregate
+    PruneI --> Aggregate
+    PruneN --> Aggregate
+    PruneV --> Aggregate
     
-    PruneImages --> CheckNetworks
-    CheckNetworks --> |Yes| PruneNetworks[docker network prune]
-    CheckNetworks --> |No| CheckVolumes{Prune<br/>volumes?}
+    Aggregate[Aggregate Results<br/>Space + Counts] --> Stats[Update stats.json<br/>• Total runs<br/>• Resources deleted<br/>• Space reclaimed<br/>• Timestamps]
     
-    PruneNetworks --> CheckVolumes
-    CheckVolumes --> |Yes| PruneVolumes[docker volume prune]
-    CheckVolumes --> |No| CollectStats[Collect statistics<br/>Space reclaimed, items deleted]
+    Stats --> Notify{Notifications<br/>enabled?}
     
-    PruneVolumes --> CollectStats
-    
-    CollectStats --> UpdateStats[Update stats.json<br/>Cumulative totals]
-    UpdateStats --> CheckNotif{Notifications<br/>enabled?}
-    
-    CheckNotif --> |No| LogResults[Write to prunemate.log]
-    CheckNotif --> |Yes| CheckChanges{Only notify<br/>on changes?}
-    
-    CheckChanges --> |Yes & No changes| LogResults
-    CheckChanges --> |No or Has changes| SendNotif[Send notification<br/>Gotify or ntfy]
-    
-    SendNotif --> LogResults
-    LogResults --> RemoveLock[Remove prunemate.lock]
-    RemoveLock --> UpdateUI[Update web UI<br/>with latest stats]
-    UpdateUI --> Scheduler
-    
-    WebUI -.-> |Manual trigger| CreateLock
+    Notify --> |Yes + Changes| Send[Send Notification<br/>Gotify/ntfy<br/>Per-host breakdown]
+    Notify --> |No or No changes| Log[Write to<br/>prunemate.log]
+    Send --> Log
+    Log --> Done[Done]
     
     style Start fill:#4a90e2
     style WebUI fill:#50c878
     style Scheduler fill:#9b59b6
-    style ConfigFile fill:#f39c12
-    style PruneLoop fill:#e74c3c
-    style UpdateStats fill:#16a085
-    style SendNotif fill:#3498db
+    style Config fill:#f39c12
+    style CheckOptions fill:#e74c3c
+    style Stats fill:#16a085
+    style Send fill:#3498db
+    style Preview fill:#e67e22
+    style API fill:#2ecc71
+    style Remote fill:#8e44ad
 ```
 
 ### File Structure
@@ -398,6 +391,7 @@ PruneMate tracks cumulative statistics across all prune runs:
 
 ---
 
+
 ## 🌐 Multi-Host Setup (Optional)
 
 PruneMate can manage multiple Docker hosts from a single interface. Each prune operation runs across all enabled hosts with aggregated results.
@@ -445,6 +439,72 @@ Click **Run now** and check logs for successful connection to all hosts.
 
 ---
 
+## 🏠 Homepage Dashboard Integration
+
+PruneMate provides a custom API endpoint at `/api/stats` that returns all-time statistics in a format compatible with [Homepage](https://gethomepage.dev/) dashboard widgets.
+
+### Setup
+
+Add this configuration to your Homepage `services.yaml`:
+
+```yaml
+- PruneMate:
+    href: http://<your-server-ip>:7676
+    description: Docker Cleanup Automation
+    icon: https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/prunemate.webp
+    widget:
+      type: customapi
+      url: http://<your-server-ip>:7676/api/stats
+      mappings:
+        - field: pruneRuns
+          label: Prune Runs
+          format: number
+        - field: lastRunText
+          label: Last Run
+        - field: imagesDeleted
+          label: Images Pruned
+          format: number
+        - field: spaceReclaimedHuman
+          label: Space Saved
+```
+
+### Available Fields
+
+The `/api/stats` endpoint returns the following fields:
+
+| Field | Type | Description | Homepage Format |
+|-------|------|-------------|-----------------|
+| `pruneRuns` | number | Total number of prune operations executed | `number` |
+| `containersDeleted` | number | Total containers deleted across all runs | `number` |
+| `imagesDeleted` | number | Total images deleted across all runs | `number` |
+| `networksDeleted` | number | Total networks deleted across all runs | `number` |
+| `volumesDeleted` | number | Total volumes deleted across all runs | `number` |
+| `spaceReclaimed` | number | Total space reclaimed in bytes | `number` |
+| `spaceReclaimedHuman` | string | Human-readable space reclaimed (e.g., "2.5 GB") | `text` |
+| `lastRunText` | string | Relative time as text (e.g., "2h ago") | `text` |
+| `lastRunTimestamp` | number | Unix timestamp in seconds of last run | `number` |
+| `lastRun` | string | ISO timestamp of most recent prune run | `date` |
+| `firstRun` | string | ISO timestamp of first prune run | `date` |
+
+### Example /api/stats output
+
+```json
+{
+  "pruneRuns": 42,
+  "containersDeleted": 156,
+  "imagesDeleted": 89,
+  "networksDeleted": 12,
+  "volumesDeleted": 7,
+  "spaceReclaimed": 5368709120,
+  "spaceReclaimedHuman": "5.00 GB",
+  "lastRunText": "2h ago",
+  "lastRunTimestamp": 1733454000,
+  "lastRun": "2025-12-06T03:00:00+01:00",
+  "firstRun": "2025-01-15T03:00:00+01:00"
+}
+```
+---
+
 ## 🧠 Troubleshooting
 
 | Problem | Solution |
@@ -473,21 +533,16 @@ Click **Run now** and check logs for successful connection to all hosts.
 
 ## 📜 Release Notes
 
-### Version 1.2.7 (December 2025)
-- 🔐 **NEW** ntfy authentication support - Bearer token and Basic Auth (username:password in URL)
-  - Priority system: Bearer token → Basic Auth → unauthenticated
-  - RFC 3986 compliant URL parsing for embedded credentials
-- 🔒 **NEW** Enhanced credential security - Passwords and tokens masked in all log output
-- 🎨 **Improved:** Logo enhancement by [@shollyethan](https://github.com/shollyethan) + added to the Self-Hosted Dashboard Icons on https://selfh.st/icons/
-- 📏 **Improved:** Logo size increased from 76×76px to 82×82px
-- 📱 **Improved:** Better mobile support - Enhanced responsive design for smartphone usage
-- 🔔 **Improved:** Notification panel height increased to 900px with enhanced scrolling
-- 🔧 **Improved:** Config migration with deep merge strategy prevents data loss during upgrades
-- 📊 **Improved:** Stats persistence with forward-compatible field migration and type safety
-- 🐛 **Fixed:** Config shallow merge bug causing nested key loss during v1.2.6 → v1.2.7 upgrades
-- 🐛 **Fixed:** Legacy notification migration incomplete (ntfy credentials not preserved)
-- 🐛 **Fixed:** Stats type safety issues with corrupt JSON files
-- 🐛 **Fixed:** Notification panel button visibility on smaller screens
+### Version 1.2.8 (December 2025)
+- 🔍 **NEW** Prune preview before execution - See exactly what will be deleted before running
+  - Detailed list of containers, images, networks, and volumes to be removed
+  - Per-host breakdown for multi-host setups
+  - Two-step confirmation process for safer manual pruning
+- 🏠 **NEW** Homepage dashboard integration - `/api/stats` endpoint for customapi widget
+  - Display all-time statistics in your Homepage dashboard
+  - Shows prune runs, deleted resources, and space saved
+  - Easy setup with customapi widget configuration
+
 
 📖 **[View full changelog](CHANGELOG.md)**
 

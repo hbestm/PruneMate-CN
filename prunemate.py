@@ -448,10 +448,11 @@ def load_config(silent=False):
                     elif has_gotify_keys:
                         merged["notifications"]["provider"] = "gotify"
                     
-                    # Migrate only_on_changes setting (check both legacy keys)
-                    legacy_only_on_changes = data.get("gotify_only_on_changes") or data.get("ntfy_only_on_changes")
-                    if legacy_only_on_changes is not None:
-                        merged["notifications"]["only_on_changes"] = bool(legacy_only_on_changes)
+                    # Migrate only_on_changes setting (check both legacy keys, prefer gotify)
+                    if "gotify_only_on_changes" in data:
+                        merged["notifications"]["only_on_changes"] = bool(data["gotify_only_on_changes"])
+                    elif "ntfy_only_on_changes" in data:
+                        merged["notifications"]["only_on_changes"] = bool(data["ntfy_only_on_changes"])
             
             # Ensure notifications key exists with all required subkeys
             if "notifications" not in merged:
@@ -644,6 +645,210 @@ def create_docker_client(host_url: str):
         return None
 
 
+def get_prune_preview() -> dict:
+    """Get a preview of what would be pruned without actually pruning.
+    
+    Returns a dict with preview results per host and aggregate totals.
+    """
+    load_config(silent=True)
+    
+    if not any([
+        config.get("prune_containers"),
+        config.get("prune_images"),
+        config.get("prune_networks"),
+        config.get("prune_volumes"),
+    ]):
+        return {"error": "No prune options selected", "hosts": []}
+    
+    if docker is None:
+        return {"error": "Docker SDK not available", "hosts": []}
+    
+    # Get all hosts (local + external)
+    docker_hosts = config.get("docker_hosts", [])
+    enabled_external_hosts = [
+        h for h in docker_hosts 
+        if h.get("enabled", True) and h.get("name") != "Local" and "unix://" not in h.get("url", "")
+    ]
+    
+    all_hosts = [
+        {"name": "Local", "url": "unix:///var/run/docker.sock", "enabled": True}
+    ] + enabled_external_hosts
+    
+    preview_results = []
+    total_containers = 0
+    total_images = 0
+    total_networks = 0
+    total_volumes = 0
+    
+    for host in all_hosts:
+        host_name = host.get("name", "Unnamed")
+        host_url = host.get("url", "unix:///var/run/docker.sock")
+        
+        client = None
+        try:
+            client = create_docker_client(host_url)
+            if client is None:
+                preview_results.append({
+                    "name": host_name,
+                    "url": host_url,
+                    "success": False,
+                    "error": "Failed to connect",
+                    "containers": [],
+                    "images": [],
+                    "networks": [],
+                    "volumes": []
+                })
+                continue
+            
+            containers_list = []
+            images_list = []
+            networks_list = []
+            volumes_list = []
+            
+            # Preview containers (stopped containers)
+            if config.get("prune_containers"):
+                try:
+                    # List all stopped containers (exited, dead, created)
+                    # This matches what containers.prune() actually removes
+                    all_containers = client.containers.list(all=True)
+                    stopped_containers = [c for c in all_containers if c.status in ["exited", "dead", "created"]]
+                    containers_list = [
+                        {"id": c.short_id, "name": c.name, "status": c.status}
+                        for c in stopped_containers
+                    ]
+                except Exception as e:
+                    log(f"[{host_name}] Error listing containers: {e}")
+            
+            # Preview images (all unused images, matching prune behavior)
+            if config.get("prune_images"):
+                try:
+                    # List all unused images (dangling=False means all unused, not just dangling)
+                    # This matches client.images.prune(filters={"dangling": False}) behavior
+                    all_images = client.images.list()
+                    # Get images in use by containers
+                    used_image_ids = set()
+                    for container in client.containers.list(all=True):
+                        img_id = container.attrs.get("Image")
+                        if img_id:
+                            used_image_ids.add(img_id)
+                    
+                    # Filter to unused images only
+                    unused_images = [img for img in all_images if img.id not in used_image_ids]
+                    images_list = [
+                        {
+                            "id": img.short_id,
+                            "tags": img.tags[:3] if img.tags else ["<none>"],
+                            "size": human_bytes(img.attrs.get("Size", 0))
+                        }
+                        for img in unused_images
+                    ]
+                except Exception as e:
+                    log(f"[{host_name}] Error listing images: {e}")
+            
+            # Preview networks (unused networks, excluding default ones)
+            if config.get("prune_networks"):
+                try:
+                    networks = client.networks.list()
+                    unused_networks = []
+                    
+                    # Get list of network IDs used by running containers
+                    running_network_ids = set()
+                    for container in client.containers.list(filters={"status": "running"}):
+                        # Get network settings from container
+                        network_settings = container.attrs.get("NetworkSettings", {}).get("Networks", {})
+                        for net_name, net_info in network_settings.items():
+                            if net_info.get("NetworkID"):
+                                running_network_ids.add(net_info["NetworkID"])
+                    
+                    for net in networks:
+                        # Skip default networks
+                        if net.name in ["bridge", "host", "none"]:
+                            continue
+                        # Skip networks connected to running containers
+                        if net.id in running_network_ids:
+                            continue
+                        # This network is unused and can be pruned
+                        unused_networks.append(net)
+                    
+                    networks_list = [
+                        {"id": net.short_id, "name": net.name}
+                        for net in unused_networks
+                    ]
+                except Exception as e:
+                    log(f"[{host_name}] Error listing networks: {e}")
+            
+            # Preview volumes (unused volumes)
+            if config.get("prune_volumes"):
+                try:
+                    # Get all volumes (can be None in some Docker versions)
+                    all_volumes_result = client.volumes.list()
+                    all_volumes = all_volumes_result if all_volumes_result else []
+                    # Get volumes in use by containers
+                    used_volume_names = set()
+                    for container in client.containers.list(all=True):
+                        for mount in container.attrs.get("Mounts", []):
+                            if mount.get("Type") == "volume":
+                                used_volume_names.add(mount.get("Name"))
+                    
+                    unused_volumes = [v for v in all_volumes if v.name not in used_volume_names]
+                    volumes_list = [
+                        {"name": v.name, "driver": v.attrs.get("Driver", "local")}
+                        for v in unused_volumes
+                    ]
+                except Exception as e:
+                    log(f"[{host_name}] Error listing volumes: {e}")
+            
+            total_containers += len(containers_list)
+            total_images += len(images_list)
+            total_networks += len(networks_list)
+            total_volumes += len(volumes_list)
+            
+            preview_results.append({
+                "name": host_name,
+                "url": host_url,
+                "success": True,
+                "containers": containers_list,
+                "images": images_list,
+                "networks": networks_list,
+                "volumes": volumes_list,
+                "totals": {
+                    "containers": len(containers_list),
+                    "images": len(images_list),
+                    "networks": len(networks_list),
+                    "volumes": len(volumes_list)
+                }
+            })
+            
+        except Exception as e:
+            log(f"[{host_name}] Error getting preview: {e}")
+            preview_results.append({
+                "name": host_name,
+                "url": host_url,
+                "success": False,
+                "error": str(e),
+                "containers": [],
+                "images": [],
+                "networks": [],
+                "volumes": []
+            })
+        finally:
+            if client is not None:
+                try:
+                    client.close()
+                except Exception:
+                    pass
+    
+    return {
+        "hosts": preview_results,
+        "totals": {
+            "containers": total_containers,
+            "images": total_images,
+            "networks": total_networks,
+            "volumes": total_volumes
+        }
+    }
+
+
 def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
     """Execute Docker pruning based on current configuration."""
     # Ensure we have the latest config before running prune job
@@ -778,10 +983,12 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
                 # Volumes
                 if config.get("prune_volumes"):
                     try:
-                        log(f"[{host_name}] Pruning volumes (unused anonymous volumes only)…")
-                        r = client.volumes.prune()
+                        log(f"[{host_name}] Pruning volumes (all unused, including named)…")
+                        r = client.volumes.prune(filters={"all": True})
                         log(f"[{host_name}] Volumes prune result: {r}")
-                        volumes_deleted = len(r.get("VolumesDeleted") or [])
+                        # VolumesDeleted is a list of volume names (strings), not dicts
+                        volumes_deleted_list = r.get("VolumesDeleted") or []
+                        volumes_deleted = len(volumes_deleted_list) if volumes_deleted_list else 0
                         space_reclaimed += int(r.get("SpaceReclaimed") or 0)
                     except Exception as e:
                         log(f"[{host_name}] Error pruning volumes: {e}")
@@ -1117,6 +1324,55 @@ def run_now():
     return redirect(url_for("index"))
 
 
+@app.route("/preview-prune", methods=["POST"])
+def preview_prune():
+    """Get a preview of what would be pruned without executing."""
+    load_config(silent=True)
+    
+    # Save current prune settings from request body (if provided)
+    try:
+        data = request.get_json() or {}
+        if any(k in data for k in ["prune_containers", "prune_images", "prune_networks", "prune_volumes"]):
+            config["prune_containers"] = data.get("prune_containers", False)
+            config["prune_images"] = data.get("prune_images", False)
+            config["prune_networks"] = data.get("prune_networks", False)
+            config["prune_volumes"] = data.get("prune_volumes", False)
+            save_config()
+            log("Preview requested with updated prune settings saved.")
+    except Exception as e:
+        log(f"Error parsing preview request body: {e}")
+    
+    log("Prune preview requested.")
+    preview = get_prune_preview()
+    return jsonify(preview)
+
+
+@app.route("/run-confirmed", methods=["POST"])
+def run_confirmed():
+    """Execute prune after user has seen and confirmed the preview."""
+    load_config(silent=True)
+    
+    # Ensure latest prune settings are saved (should be saved by preview, but double-check)
+    try:
+        data = request.get_json() or {}
+        if any(k in data for k in ["prune_containers", "prune_images", "prune_networks", "prune_volumes"]):
+            config["prune_containers"] = data.get("prune_containers", False)
+            config["prune_images"] = data.get("prune_images", False)
+            config["prune_networks"] = data.get("prune_networks", False)
+            config["prune_volumes"] = data.get("prune_volumes", False)
+            save_config()
+            log("Confirmed run with updated prune settings saved.")
+    except Exception as e:
+        log(f"Error parsing confirmed run request body: {e}")
+    
+    log("Confirmed manual run trigger received.")
+    ran = run_prune_job(origin="manual", wait=True)
+    return jsonify({
+        "success": ran,
+        "message": "Prune job executed successfully." if ran else "Prune job skipped (busy or timeout)."
+    })
+
+
 @app.route("/test-notification", methods=["POST"])
 def test_notification():
     """Save configuration and send a test notification."""
@@ -1224,6 +1480,57 @@ def test_notification():
 def stats():
     """Return all-time statistics as JSON."""
     return jsonify(load_stats())
+
+
+@app.route("/api/stats")
+def api_stats():
+    """Return formatted statistics for Homepage dashboard widget."""
+    stats = load_stats()
+    
+    # Calculate relative time for last run
+    last_run_text = "Never"
+    last_run_timestamp = None
+    if stats.get("last_run"):
+        try:
+            last_run_dt = datetime.datetime.fromisoformat(stats["last_run"])
+            now = datetime.datetime.now(app_timezone)
+            
+            # Convert both to timezone-aware if needed
+            if last_run_dt.tzinfo is None:
+                last_run_dt = last_run_dt.replace(tzinfo=app_timezone)
+            
+            delta = now - last_run_dt
+            
+            # Format relative time
+            if delta.days > 0:
+                last_run_text = f"{delta.days}d ago"
+            elif delta.seconds >= 3600:
+                hours = delta.seconds // 3600
+                last_run_text = f"{hours}h ago"
+            elif delta.seconds >= 60:
+                minutes = delta.seconds // 60
+                last_run_text = f"{minutes}m ago"
+            else:
+                last_run_text = "Just now"
+            
+            # Provide timestamp in seconds for format: relativeTime
+            last_run_timestamp = int(last_run_dt.timestamp())
+        except Exception:
+            last_run_text = "Unknown"
+    
+    return jsonify({
+        "pruneRuns": stats.get("prune_runs", 0),
+        "containersDeleted": stats.get("containers_deleted", 0),
+        "imagesDeleted": stats.get("images_deleted", 0),
+        "networksDeleted": stats.get("networks_deleted", 0),
+        "volumesDeleted": stats.get("volumes_deleted", 0),
+        "spaceReclaimed": stats.get("total_space_reclaimed", 0),
+        "spaceReclaimedHuman": human_bytes(stats.get("total_space_reclaimed", 0)),
+        "firstRun": stats.get("first_run"),
+        "lastRun": stats.get("last_run"),
+        "lastRunText": last_run_text,
+        "lastRunTimestamp": last_run_timestamp
+    })
 
 
 @app.route("/hosts")

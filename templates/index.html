@@ -475,7 +475,7 @@
         <div class="toggle-row">
           <span class="label-text">All unused containers</span>
           <label class="switch">
-            <input type="checkbox" name="prune_containers"
+            <input type="checkbox" name="prune_containers" id="prune_containers"
                    {% if config.prune_containers %}checked{% endif %}>
             <span class="slider"></span>
           </label>
@@ -485,7 +485,7 @@
         <div class="toggle-row">
           <span class="label-text">All unused images</span>
           <label class="switch">
-            <input type="checkbox" name="prune_images"
+            <input type="checkbox" name="prune_images" id="prune_images"
                    {% if config.prune_images %}checked{% endif %}>
             <span class="slider"></span>
           </label>
@@ -495,7 +495,7 @@
         <div class="toggle-row">
           <span class="label-text">All unused networks</span>
           <label class="switch">
-            <input type="checkbox" name="prune_networks"
+            <input type="checkbox" name="prune_networks" id="prune_networks"
                    {% if config.prune_networks %}checked{% endif %}>
             <span class="slider"></span>
           </label>
@@ -505,7 +505,7 @@
         <div class="toggle-row">
           <span class="label-text">All unused volumes</span>
           <label class="switch">
-            <input type="checkbox" name="prune_volumes"
+            <input type="checkbox" name="prune_volumes" id="prune_volumes"
                    {% if config.prune_volumes %}checked{% endif %}>
             <span class="slider"></span>
           </label>
@@ -698,16 +698,47 @@
     </form>
 
     <!-- Manual prune trigger form -->
-    <form method="post" action="{{ url_for('run_now') }}" style="margin-top: 6px;" onsubmit="setTimeout(loadStats, 1000);">
+    <form method="post" action="{{ url_for('run_now') }}" style="margin-top: 6px; display: none;" id="old-run-form" onsubmit="setTimeout(loadStats, 1000);">
       <button type="submit" class="btn btn-secondary">
         Run now
       </button>
     </form>
 
+    <!-- Manual prune with preview -->
+    <div style="margin-top: 6px;">
+      <button type="button" class="btn btn-secondary" onclick="showPrunePreview()">
+        Preview & Run
+      </button>
+    </div>
+
     <!-- Application footer -->
     <div class="footer">
-      PruneMate · 2025 · V1.2.7 ·
+      PruneMate · 2025 · V1.2.8 ·
       <a href="https://github.com/anoniemerd/PruneMate" target="_blank">GitHub</a>
+    </div>
+  </div>
+
+  <!-- Prune Preview Modal -->
+  <div id="prunePreviewModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 1000; overflow-y: auto; padding: 20px;">
+    <div style="max-width: 900px; margin: 40px auto; background: linear-gradient(180deg, rgba(18,25,44,0.98), rgba(8,12,22,0.98)); border-radius: 24px; padding: 28px; border: 1px solid rgba(148,163,184,0.15); box-shadow: 0 32px 70px rgba(0,0,0,0.75);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text);">🔍 Prune Preview</h2>
+        <button onclick="closePrunePreview()" style="background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s;">&times;</button>
+      </div>
+      
+      <div id="previewContent" style="min-height: 200px;">
+        <div style="text-align: center; padding: 40px; color: var(--muted);">
+          <div style="font-size: 2rem; margin-bottom: 12px;">⏳</div>
+          <p>Loading preview...</p>
+        </div>
+      </div>
+      
+      <div id="previewActions" style="display: flex; flex-direction: row; margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(148,163,184,0.1); gap: 12px; justify-content: flex-end; visibility: hidden;">
+        <button onclick="closePrunePreview()" class="btn" style="background: rgba(148,163,184,0.08); color: var(--text);">Cancel</button>
+        <button onclick="executeConfirmedPrune()" class="btn btn-secondary" id="confirmPruneBtn" style="display: none;">
+          ✓ Confirm & Execute
+        </button>
+      </div>
     </div>
   </div>
 
@@ -965,19 +996,18 @@
               const day = String(date.getDate()).padStart(2, '0');
               const month = String(date.getMonth() + 1).padStart(2, '0');
               const year = date.getFullYear();
+              const mins = String(date.getMinutes()).padStart(2, '0');
               
               {% if use_24h %}
               // 24-hour format
-              const hours = String(date.getHours()).padStart(2, '0');
-              const minutes = String(date.getMinutes()).padStart(2, '0');
-              return `${day}-${month}-${year} ${hours}:${minutes}`;
+              const hoursFormatted = String(date.getHours()).padStart(2, '0');
+              return `${day}-${month}-${year} ${hoursFormatted}:${mins}`;
               {% else %}
               // 12-hour format with AM/PM
-              let hours = date.getHours();
-              const minutes = String(date.getMinutes()).padStart(2, '0');
-              const period = hours >= 12 ? 'PM' : 'AM';
-              hours = hours % 12 || 12;
-              return `${day}-${month}-${year} ${hours}:${minutes} ${period}`;
+              const rawHrs = date.getHours();
+              const period = rawHrs >= 12 ? 'PM' : 'AM';
+              const hoursFormatted = rawHrs % 12 || 12;
+              return `${day}-${month}-${year} ${hoursFormatted}:${mins} ${period}`;
               {% endif %}
             } catch (e) {
               return '-';
@@ -1334,6 +1364,203 @@
       }
       {% endif %}
     });
+
+    // Prune Preview Functions
+    function showPrunePreview() {
+      const modal = document.getElementById('prunePreviewModal');
+      const content = document.getElementById('previewContent');
+      const actions = document.getElementById('previewActions');
+      
+      // Reset actions div to default state (in case it was modified by previous execution)
+      actions.innerHTML = '<button onclick="closePrunePreview()" class="btn" style="background: rgba(148,163,184,0.08); color: var(--text);">Cancel</button><button onclick="executeConfirmedPrune()" class="btn btn-secondary" id="confirmPruneBtn" style="display: none;">✓ Confirm & Execute</button>';
+      
+      modal.style.display = 'block';
+      content.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);"><div style="font-size: 2rem; margin-bottom: 12px;">⏳</div><p>Loading preview...</p></div>';
+      actions.style.visibility = 'hidden';
+      
+      // Collect current prune settings from checkboxes
+      const pruneSettings = {
+        prune_containers: document.getElementById('prune_containers')?.checked || false,
+        prune_images: document.getElementById('prune_images')?.checked || false,
+        prune_networks: document.getElementById('prune_networks')?.checked || false,
+        prune_volumes: document.getElementById('prune_volumes')?.checked || false
+      };
+      
+      fetch('{{ url_for("preview_prune") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(pruneSettings)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          content.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;"><div style="font-size: 2rem; margin-bottom: 12px;">⚠️</div><p>' + data.error + '</p></div>';
+          return;
+        }
+        
+        let html = '';
+        const totals = data.totals || {containers: 0, images: 0, networks: 0, volumes: 0};
+        const hasItems = totals.containers > 0 || totals.images > 0 || totals.networks > 0 || totals.volumes > 0;
+        
+        if (!hasItems) {
+          html = '<div style="text-align: center; padding: 40px; color: var(--accent-strong);"><div style="font-size: 2rem; margin-bottom: 12px;">✅</div><p style="font-size: 1.1rem; margin-bottom: 8px;">Nothing to prune!</p><p style="color: var(--muted); font-size: 0.9rem;">Your Docker resources are already clean.</p></div>';
+          content.innerHTML = html;
+          actions.style.visibility = 'visible';
+          const confirmBtn = document.getElementById('confirmPruneBtn');
+          if (confirmBtn) confirmBtn.style.display = 'none';
+          return;
+        }
+        
+        // Summary
+        html += '<div style="background: rgba(14,165,233,0.08); border: 1px solid rgba(14,165,233,0.2); border-radius: 16px; padding: 20px; margin-bottom: 24px;">';
+        html += '<h3 style="margin: 0 0 16px 0; color: var(--text); font-size: 1.1rem;">📊 Summary</h3>';
+        html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">';
+        
+        if (totals.containers > 0) {
+          html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.containers + '</div><div style="color: var(--muted); font-size: 0.85rem;">Containers</div></div>';
+        }
+        if (totals.images > 0) {
+          html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.images + '</div><div style="color: var(--muted); font-size: 0.85rem;">Images</div></div>';
+        }
+        if (totals.networks > 0) {
+          html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.networks + '</div><div style="color: var(--muted); font-size: 0.85rem;">Networks</div></div>';
+        }
+        if (totals.volumes > 0) {
+          html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.volumes + '</div><div style="color: var(--muted); font-size: 0.85rem;">Volumes</div></div>';
+        }
+        
+        html += '</div></div>';
+        
+        // Per-host details
+        if (data.hosts && data.hosts.length > 0) {
+          data.hosts.forEach(host => {
+            if (!host.success) {
+              html += '<div style="background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); border-radius: 12px; padding: 16px; margin-bottom: 16px;">';
+              html += '<h4 style="margin: 0 0 8px 0; color: #fca5a5;">❌ ' + host.name + '</h4>';
+              html += '<p style="color: var(--muted); margin: 0; font-size: 0.9rem;">' + (host.error || 'Failed to connect') + '</p>';
+              html += '</div>';
+              return;
+            }
+            
+            const hostTotal = host.totals.containers + host.totals.images + host.totals.networks + host.totals.volumes;
+            if (hostTotal === 0) return; // Skip hosts with nothing to prune
+            
+            html += '<div style="background: rgba(148,163,184,0.04); border: 1px solid rgba(148,163,184,0.08); border-radius: 12px; padding: 16px; margin-bottom: 16px;">';
+            html += '<h4 style="margin: 0 0 12px 0; color: var(--text); font-size: 1rem;">🐳 ' + host.name + '</h4>';
+            
+            // Containers
+            if (host.containers && host.containers.length > 0) {
+              html += '<div style="margin-bottom: 12px;"><strong style="color: var(--accent); font-size: 0.9rem;">🗑️ Containers (' + host.containers.length + '):</strong>';
+              html += '<div style="margin-top: 6px; max-height: 120px; overflow-y: auto; font-size: 0.85rem; color: var(--muted);">';
+              host.containers.slice(0, 10).forEach(c => {
+                html += '<div style="padding: 4px 0;">• ' + (c.name || c.id) + ' <span style="color: #6b7280;">(' + c.status + ')</span></div>';
+              });
+              if (host.containers.length > 10) {
+                html += '<div style="padding: 4px 0; font-style: italic;">... and ' + (host.containers.length - 10) + ' more</div>';
+              }
+              html += '</div></div>';
+            }
+            
+            // Images
+            if (host.images && host.images.length > 0) {
+              html += '<div style="margin-bottom: 12px;"><strong style="color: var(--accent); font-size: 0.9rem;">💿 Images (' + host.images.length + '):</strong>';
+              html += '<div style="margin-top: 6px; max-height: 120px; overflow-y: auto; font-size: 0.85rem; color: var(--muted);">';
+              host.images.slice(0, 10).forEach(img => {
+                const tags = img.tags.join(', ') || img.id;
+                html += '<div style="padding: 4px 0;">• ' + tags + ' <span style="color: #6b7280;">(' + img.size + ')</span></div>';
+              });
+              if (host.images.length > 10) {
+                html += '<div style="padding: 4px 0; font-style: italic;">... and ' + (host.images.length - 10) + ' more</div>';
+              }
+              html += '</div></div>';
+            }
+            
+            // Networks
+            if (host.networks && host.networks.length > 0) {
+              html += '<div style="margin-bottom: 12px;"><strong style="color: var(--accent); font-size: 0.9rem;">🌐 Networks (' + host.networks.length + '):</strong>';
+              html += '<div style="margin-top: 6px; max-height: 100px; overflow-y: auto; font-size: 0.85rem; color: var(--muted);">';
+              host.networks.forEach(net => {
+                html += '<div style="padding: 4px 0;">• ' + net.name + '</div>';
+              });
+              html += '</div></div>';
+            }
+            
+            // Volumes
+            if (host.volumes && host.volumes.length > 0) {
+              html += '<div style="margin-bottom: 12px;"><strong style="color: var(--accent); font-size: 0.9rem;">📦 Volumes (' + host.volumes.length + '):</strong>';
+              html += '<div style="margin-top: 6px; max-height: 100px; overflow-y: auto; font-size: 0.85rem; color: var(--muted);">';
+              host.volumes.forEach(vol => {
+                html += '<div style="padding: 4px 0;">• ' + vol.name + '</div>';
+              });
+              html += '</div></div>';
+            }
+            
+            html += '</div>';
+          });
+        }
+        
+        content.innerHTML = html;
+        actions.style.visibility = 'visible';
+        const confirmBtn = document.getElementById('confirmPruneBtn');
+        if (confirmBtn) confirmBtn.style.display = hasItems ? 'block' : 'none';
+      })
+      .catch(error => {
+        content.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;"><div style="font-size: 2rem; margin-bottom: 12px;">❌</div><p>Failed to load preview</p><p style="font-size: 0.85rem; color: var(--muted); margin-top: 8px;">' + error.message + '</p></div>';
+        actions.style.visibility = 'visible';
+        const confirmBtn = document.getElementById('confirmPruneBtn');
+        if (confirmBtn) confirmBtn.style.display = 'none';
+      });
+    }
+
+    function closePrunePreview() {
+      document.getElementById('prunePreviewModal').style.display = 'none';
+    }
+
+    function executeConfirmedPrune() {
+      const btn = document.getElementById('confirmPruneBtn');
+      if (!btn) return; // Safety check
+      
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Executing...';
+      
+      // Collect current prune settings from checkboxes (in case they changed between preview and confirm)
+      const pruneSettings = {
+        prune_containers: document.getElementById('prune_containers')?.checked || false,
+        prune_images: document.getElementById('prune_images')?.checked || false,
+        prune_networks: document.getElementById('prune_networks')?.checked || false,
+        prune_volumes: document.getElementById('prune_volumes')?.checked || false
+      };
+      
+      fetch('{{ url_for("run_confirmed") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(pruneSettings)
+      })
+      .then(response => response.json())
+      .then(data => {
+        const content = document.getElementById('previewContent');
+        const actions = document.getElementById('previewActions');
+        if (!content || !actions) return;
+        
+        if (data.success) {
+          content.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--accent-strong);"><div style="font-size: 2rem; margin-bottom: 12px;">✅</div><p style="font-size: 1.1rem; margin-bottom: 8px;">Prune completed successfully!</p><p style="color: var(--muted); font-size: 0.9rem;">Check the logs for detailed results.</p></div>';
+          actions.innerHTML = '<button onclick="closePrunePreview(); setTimeout(loadStats, 500);" class="btn btn-secondary">Close</button>';
+        } else {
+          content.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;"><div style="font-size: 2rem; margin-bottom: 12px;">⚠️</div><p>' + (data.message || 'Unknown error') + '</p></div>';
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
+      })
+      .catch(error => {
+        const content = document.getElementById('previewContent');
+        if (content) {
+          content.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;"><div style="font-size: 2rem; margin-bottom: 12px;">❌</div><p>Execution failed</p><p style="font-size: 0.85rem; color: var(--muted); margin-top: 8px;">' + (error.message || 'Unknown error') + '</p></div>';
+        }
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      });
+    }
   </script>
 </body>
 </html>
