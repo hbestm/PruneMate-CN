@@ -261,67 +261,7 @@ Access the web interface at `http://localhost:7676/` (or your server IP) to conf
 6. **Sends notification** (if configured and enabled)
 7. **Logs everything** with timezone-aware timestamps
 
-### Architecture Flowchart
-
-```mermaid
-flowchart TD
-    Start([PruneMate]) --> WebUI[Web UI<br/>Port 8080]
-    Start --> Scheduler[Scheduler<br/>every minute]
-    Start --> API[API Endpoints<br/>/api/stats]
-    
-    WebUI --> |Configure| Config[(config.json<br/>• Schedule<br/>• Prune options<br/>• Notifications<br/>• Remote hosts)]
-    WebUI --> |View Stats| StatsUI[Display stats.json<br/>All-time metrics]
-    WebUI --> |Manual/Preview| Manual[Manual Trigger]
-    API --> |Homepage Widget| StatsUI
-    
-    Scheduler --> CheckTime{Scheduled<br/>time?}
-    CheckTime --> |No| Scheduler
-    CheckTime --> |Yes| LoadConfig[Load Config]
-    
-    Manual --> |Preview| Preview[Get Preview<br/>Per-host breakdown<br/>Show resources]
-    Preview --> |User confirms| LoadConfig
-    
-    LoadConfig --> Lock{Already<br/>running?}
-    Lock --> |Yes| Skip[Skip]
-    Lock --> |No| CheckHosts{Remote<br/>hosts?}
-    
-    CheckHosts --> |Yes| Remote[Local + Remote Hosts<br/>via docker-socket-proxy<br/>tcp://host:2375]
-    CheckHosts --> |No| Local[Local Host Only<br/>unix:///var/run/docker.sock]
-    
-    Remote --> CheckOptions
-    Local --> CheckOptions
-    
-    CheckOptions{Check enabled<br/>prune options}
-    CheckOptions --> |Containers ✓| PruneC[Prune Containers<br/>stopped/exited]
-    CheckOptions --> |Images ✓| PruneI[Prune Images<br/>all unused]
-    CheckOptions --> |Networks ✓| PruneN[Prune Networks<br/>unused]
-    CheckOptions --> |Volumes ✓| PruneV[Prune Volumes<br/>all unused + named]
-    
-    PruneC --> Aggregate
-    PruneI --> Aggregate
-    PruneN --> Aggregate
-    PruneV --> Aggregate
-    
-    Aggregate[Aggregate Results<br/>Space + Counts] --> Stats[Update stats.json<br/>• Total runs<br/>• Resources deleted<br/>• Space reclaimed<br/>• Timestamps]
-    
-    Stats --> Notify{Notifications<br/>enabled?}
-    
-    Notify --> |Yes + Changes| Send[Send Notification<br/>Gotify/ntfy<br/>Per-host breakdown]
-    Notify --> |No or No changes| Log[Write to<br/>prunemate.log]
-    Send --> Log
-    Log --> Done[Done]
-    
-    style Start fill:#4a90e2
-    style WebUI fill:#50c878
-    style Scheduler fill:#9b59b6
-    style Config fill:#f39c12
-    style CheckOptions fill:#e74c3c
-    style Stats fill:#16a085
-    style Send fill:#3498db
-    style Preview fill:#e67e22
-    style API fill:#2ecc71
-    style Remote fill:#8e44ad
-```
+📊 **[View detailed architecture & flowchart](ARCHITECTURE.md)**
 
 ### File Structure
 
