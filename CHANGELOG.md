@@ -2,6 +2,42 @@
 
 All notable changes to PruneMate will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- 🏗️ **Docker build cache pruning support** - New option to clean up Docker builder cache
+  - Can reclaim significant disk space
+  - Uses Docker API's `/build/prune` endpoint
+  - Integrated into preview, statistics, and notifications
+  - **⚠️ IMPORTANT: Docker Socket Proxy users MUST add `BUILD=1` environment variable to enable this feature**
+  - See README for updated Docker Socket Proxy configuration
+- 💬 **Discord notification provider** - Full support for Discord webhook notifications
+  - Configure via Webhook URL (from Discord server integrations)
+  - Priority-based color coding: Low=Green, Medium=Orange, High=Red
+  - Rich embed formatting with timestamps
+  - Works alongside Gotify, ntfy, and Telegram providers
+- 📱 **Telegram notification provider** - Full support for Telegram Bot notifications
+  - Priority support: Low=silent notifications, Medium/High=normal sound
+  - HTML formatting for rich message display
+  - Works alongside Gotify, ntfy, and Discord providers
+- 🎯 **Text-based priority system** - Changed from numeric (1-10) to text-based (Low/Medium/High)
+  - More intuitive and user-friendly
+  - Default priority changed from "Low" to "Medium"
+  - Automatic migration from numeric to text priority on upgrade
+  - Provider-specific priority mapping (e.g., Telegram uses disable_notification, Gotify uses numeric values)
+
+### Changed
+- ⚙️ **Default notification priority** - Changed from "Low" to "Medium" for better visibility
+  - All new configurations default to medium priority
+  - Existing configurations with numeric priorities auto-migrate to text equivalents
+  - Migration logic: 1-3→Low, 4-7→Medium, 8-10→High
+
+### Fixed
+- 🔧 **Notification provider migration** - Added forward compatibility for new providers
+  - Discord and Telegram credentials automatically added to existing configs
+  - All provider subkeys (gotify, ntfy, discord, telegram) guaranteed to exist
+  - Prevents errors when upgrading from older versions
+
 ## [V1.2.8] - December 2025
 
 ### Added

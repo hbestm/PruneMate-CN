@@ -46,11 +46,15 @@ DEFAULT_CONFIG = {
     "prune_images": True,
     "prune_networks": False,
     "prune_volumes": False,
+    "prune_build_cache": False,
     "docker_hosts": [],
     "notifications": {
         "provider": "gotify",
         "gotify": {"enabled": False, "url": "", "token": ""},
         "ntfy": {"enabled": False, "url": "", "topic": "", "token": ""},
+        "discord": {"enabled": False, "webhook_url": ""},
+        "telegram": {"enabled": False, "bot_token": "", "chat_id": ""},
+        "priority": "medium",
         "only_on_changes": True,
     },
 }
@@ -203,6 +207,7 @@ def load_stats() -> dict:
         "images_deleted": 0,
         "networks_deleted": 0,
         "volumes_deleted": 0,
+        "build_cache_deleted": 0,
         "prune_runs": 0,
         "first_run": None,
         "last_run": None,
@@ -220,7 +225,7 @@ def load_stats() -> dict:
                 if key in loaded_stats:
                     # Type safety: ensure numeric fields are actually numbers
                     if key in {"total_space_reclaimed", "containers_deleted", "images_deleted", 
-                              "networks_deleted", "volumes_deleted", "prune_runs"}:
+                              "networks_deleted", "volumes_deleted", "build_cache_deleted", "prune_runs"}:
                         try:
                             merged_stats[key] = int(loaded_stats[key])
                         except (ValueError, TypeError):
@@ -270,18 +275,20 @@ def save_stats(stats: dict) -> None:
         log(f"Error saving statistics: {e}")
 
 
-def update_stats(containers: int, images: int, networks: int, volumes: int, space: int) -> None:
+def update_stats(containers: int, images: int, networks: int, volumes: int, build_cache: int, space: int) -> None:
     """Update cumulative statistics after a prune run with type safety."""
     stats = load_stats()
     
     # Type-safe increments (load_stats already validates types, but be defensive)
     try:
-        stats["containers_deleted"] = int(stats.get("containers_deleted", 0)) + int(containers)
-        stats["images_deleted"] = int(stats.get("images_deleted", 0)) + int(images)
-        stats["networks_deleted"] = int(stats.get("networks_deleted", 0)) + int(networks)
-        stats["volumes_deleted"] = int(stats.get("volumes_deleted", 0)) + int(volumes)
-        stats["total_space_reclaimed"] = int(stats.get("total_space_reclaimed", 0)) + int(space)
-        stats["prune_runs"] = int(stats.get("prune_runs", 0)) + 1
+        # Extra defensive: convert None to 0 before int() to handle null values from old stats
+        stats["containers_deleted"] = int(stats.get("containers_deleted") or 0) + int(containers or 0)
+        stats["images_deleted"] = int(stats.get("images_deleted") or 0) + int(images or 0)
+        stats["networks_deleted"] = int(stats.get("networks_deleted") or 0) + int(networks or 0)
+        stats["volumes_deleted"] = int(stats.get("volumes_deleted") or 0) + int(volumes or 0)
+        stats["build_cache_deleted"] = int(stats.get("build_cache_deleted") or 0) + int(build_cache or 0)
+        stats["total_space_reclaimed"] = int(stats.get("total_space_reclaimed") or 0) + int(space or 0)
+        stats["prune_runs"] = int(stats.get("prune_runs") or 0) + 1
     except (ValueError, TypeError) as e:
         log(f"Type error in stats update: {e}. Stats may be incomplete.")
         # Continue with partial update rather than failing completely
@@ -390,6 +397,7 @@ def effective_config():
         "prune_images": config.get("prune_images"),
         "prune_networks": config.get("prune_networks"),
         "prune_volumes": config.get("prune_volumes"),
+        "prune_build_cache": config.get("prune_build_cache"),
         "docker_hosts": config.get("docker_hosts"),
         "notifications": config.get("notifications"),
     }
@@ -417,8 +425,9 @@ def load_config(silent=False):
                 # Check if we have any legacy notification keys to migrate
                 has_gotify_keys = any(k in data for k in ("gotify_enabled", "gotify_url", "gotify_token"))
                 has_ntfy_keys = any(k in data for k in ("ntfy_enabled", "ntfy_url", "ntfy_topic", "ntfy_token"))
+                has_discord_keys = any(k in data for k in ("discord_enabled", "discord_webhook_url"))
                 
-                if has_gotify_keys or has_ntfy_keys:
+                if has_gotify_keys or has_ntfy_keys or has_discord_keys:
                     # Ensure notifications exists with defaults before migration
                     if "notifications" not in merged:
                         merged["notifications"] = json.loads(json.dumps(DEFAULT_CONFIG["notifications"]))
@@ -442,8 +451,18 @@ def load_config(silent=False):
                         }
                         merged["notifications"]["ntfy"] = ntf
                     
+                    # Migrate Discord settings if present
+                    if has_discord_keys:
+                        disc = {
+                            "enabled": bool(data.get("discord_enabled")),
+                            "webhook_url": (data.get("discord_webhook_url") or "").strip(),
+                        }
+                        merged["notifications"]["discord"] = disc
+                    
                     # Migrate provider selection (default to gotify for backwards compatibility)
-                    if has_ntfy_keys and data.get("ntfy_enabled"):
+                    if has_discord_keys and data.get("discord_enabled"):
+                        merged["notifications"]["provider"] = "discord"
+                    elif has_ntfy_keys and data.get("ntfy_enabled"):
                         merged["notifications"]["provider"] = "ntfy"
                     elif has_gotify_keys:
                         merged["notifications"]["provider"] = "gotify"
@@ -457,6 +476,25 @@ def load_config(silent=False):
             # Ensure notifications key exists with all required subkeys
             if "notifications" not in merged:
                 merged["notifications"] = json.loads(json.dumps(DEFAULT_CONFIG["notifications"]))
+            
+            # Ensure all provider subkeys exist (forward compatibility for new providers like telegram)
+            for provider_key in ["gotify", "ntfy", "discord", "telegram"]:
+                if provider_key not in merged["notifications"]:
+                    merged["notifications"][provider_key] = json.loads(json.dumps(DEFAULT_CONFIG["notifications"][provider_key]))
+            
+            # Migrate numeric priority (1-10) to text priority (low/medium/high)
+            priority = merged.get("notifications", {}).get("priority")
+            if isinstance(priority, int):
+                # Map: 1-3 -> low, 4-7 -> medium, 8-10 -> high
+                if priority <= 3:
+                    merged["notifications"]["priority"] = "low"
+                elif priority <= 7:
+                    merged["notifications"]["priority"] = "medium"
+                else:
+                    merged["notifications"]["priority"] = "high"
+            elif not isinstance(priority, str) or priority not in ["low", "medium", "high"]:
+                # Invalid or missing priority, set to default
+                merged["notifications"]["priority"] = "medium"
             
             # Ensure docker_hosts exists and has valid structure
             if "docker_hosts" not in merged or not isinstance(merged["docker_hosts"], list):
@@ -530,7 +568,7 @@ def save_config():
             log(f"Failed to save config to {CONFIG_PATH}: {e}")
 
 
-def _send_gotify(cfg: dict, title: str, message: str, priority: int = 5) -> bool:
+def _send_gotify(cfg: dict, title: str, message: str, priority: str = "medium") -> bool:
     """Send a notification via Gotify."""
     if not cfg.get("enabled"):
         log("Gotify disabled; skipping notification.")
@@ -540,8 +578,13 @@ def _send_gotify(cfg: dict, title: str, message: str, priority: int = 5) -> bool
     if not url or not token:
         log("Gotify enabled but URL/token missing; skipping.")
         return False
+    
+    # Map priority: low=2, medium=5, high=8
+    priority_map = {"low": 2, "medium": 5, "high": 8}
+    gotify_priority = priority_map.get(priority, 2)
+    
     endpoint = url.rstrip("/") + "/message?token=" + token
-    payload = json.dumps({"title": title, "message": message, "priority": priority}).encode("utf-8")
+    payload = json.dumps({"title": title, "message": message, "priority": gotify_priority}).encode("utf-8")
     req = urllib.request.Request(endpoint, data=payload, headers={"Content-Type": "application/json"}, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=5) as resp:
@@ -552,7 +595,7 @@ def _send_gotify(cfg: dict, title: str, message: str, priority: int = 5) -> bool
         return False
 
 
-def _send_ntfy(cfg: dict, title: str, message: str, priority: int = 5) -> bool:
+def _send_ntfy(cfg: dict, title: str, message: str, priority: str = "medium") -> bool:
     """Send a notification via ntfy."""
     if not cfg.get("enabled"):
         log("ntfy disabled; skipping notification.")
@@ -565,9 +608,13 @@ def _send_ntfy(cfg: dict, title: str, message: str, priority: int = 5) -> bool:
         log("ntfy enabled but URL/topic missing; skipping.")
         return False
     
+    # Map priority: low=2, medium=3, high=5 (ntfy range is 1-5)
+    priority_map = {"low": 2, "medium": 3, "high": 5}
+    ntfy_priority = priority_map.get(priority, 2)
+    
     # Parse URL to extract authentication
     parsed = urllib.parse.urlparse(url)
-    headers = {"Title": title, "Priority": str(priority), "Content-Type": "text/plain"}
+    headers = {"Title": title, "Priority": str(ntfy_priority), "Content-Type": "text/plain"}
     
     # Priority 1: Use explicit token if provided (Bearer token auth)
     if token:
@@ -606,14 +653,132 @@ def _send_ntfy(cfg: dict, title: str, message: str, priority: int = 5) -> bool:
         return False
 
 
-def send_notification(title: str, message: str, priority: int = 5) -> bool:
-    """Send a notification using the configured provider (gotify or ntfy)."""
+def _send_discord(cfg: dict, title: str, message: str, priority: str = "medium") -> bool:
+    """Send a notification via Discord webhook."""
+    if not cfg.get("enabled"):
+        log("Discord disabled; skipping notification.")
+        return False
+    webhook_url = (cfg.get("webhook_url") or "").strip()
+    if not webhook_url:
+        log("Discord enabled but webhook_url missing; skipping.")
+        return False
+    
+    # Validate webhook URL format
+    if not webhook_url.startswith("https://discord.com/api/webhooks/") and \
+       not webhook_url.startswith("https://discordapp.com/api/webhooks/"):
+        log(f"Invalid Discord webhook URL format: {webhook_url[:50]}...")
+        return False
+    
+    # Map priority to Discord color (embed left border color)
+    # low: green (info), medium: orange (warning), high: red (critical)
+    color_map = {
+        "low": 0x2ECC71,     # Green
+        "medium": 0xF39C12,  # Orange
+        "high": 0xE74C3C,    # Red
+    }
+    embed_color = color_map.get(priority, 0x2ECC71)  # Default: Green
+    
+    # Format message for Discord (preserve line breaks)
+    payload = {
+        "embeds": [{
+            "title": title,
+            "description": message,
+            "color": embed_color,
+            "timestamp": datetime.datetime.now(app_timezone).isoformat()
+        }]
+    }
+    
+    data = json.dumps(payload).encode("utf-8")
+    # Discord requires proper headers including User-Agent
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "PruneMate/1.2.9 (Docker cleanup bot)"
+    }
+    req = urllib.request.Request(webhook_url, data=data, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            log(f"Discord notification sent, status={getattr(resp, 'status', '?')}")
+            return True
+    except urllib.error.HTTPError as e:
+        error_body = ""
+        try:
+            error_body = e.read().decode("utf-8")
+        except Exception:
+            pass
+        log(f"Discord webhook HTTP error {e.code}: {e.reason}. Body: {error_body[:200]}")
+        return False
+    except urllib.error.URLError as e:
+        log(f"Discord webhook network error: {e.reason}")
+        return False
+    except Exception as e:
+        log(f"Failed to send Discord notification: {e}")
+        return False
+
+
+def _send_telegram(cfg: dict, title: str, message: str, priority: str = "medium") -> bool:
+    """Send a notification via Telegram Bot API."""
+    if not cfg.get("enabled"):
+        log("Telegram disabled; skipping notification.")
+        return False
+    bot_token = (cfg.get("bot_token") or "").strip()
+    chat_id = (cfg.get("chat_id") or "").strip()
+    if not bot_token or not chat_id:
+        log("Telegram enabled but bot_token/chat_id missing; skipping.")
+        return False
+    
+    # Telegram doesn't have native priority support
+    # We use disable_notification for low priority (silent), normal for medium/high
+    disable_notification = (priority == "low")
+    
+    # Format message with title
+    full_message = f"<b>{title}</b>\n\n{message}"
+    
+    # Telegram Bot API endpoint
+    api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    
+    payload = json.dumps({
+        "chat_id": chat_id,
+        "text": full_message,
+        "parse_mode": "HTML",
+        "disable_notification": disable_notification
+    }).encode("utf-8")
+    
+    req = urllib.request.Request(
+        api_url,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": "PruneMate/1.2.9 (Docker cleanup bot)"
+        },
+        method="POST"
+    )
+    
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+            if result.get("ok"):
+                log(f"Telegram notification sent, message_id={result.get('result', {}).get('message_id', '?')}")
+                return True
+            else:
+                log(f"Telegram API returned ok=false: {result}")
+                return False
+    except Exception as e:
+        log(f"Failed to send Telegram notification: {e}")
+        return False
+
+
+def send_notification(title: str, message: str, priority: str = "medium") -> bool:
+    """Send a notification using the configured provider (gotify, ntfy, discord, or telegram)."""
     notcfg = config.get("notifications", DEFAULT_CONFIG["notifications"])
     provider = (notcfg.get("provider") or "gotify").lower()
     if provider == "gotify":
         return _send_gotify(notcfg.get("gotify", {}), title, message, priority)
     if provider == "ntfy":
         return _send_ntfy(notcfg.get("ntfy", {}), title, message, priority)
+    if provider == "discord":
+        return _send_discord(notcfg.get("discord", {}), title, message, priority)
+    if provider == "telegram":
+        return _send_telegram(notcfg.get("telegram", {}), title, message, priority)
     log(f"Unknown notification provider '{provider}'; skipping.")
     return False
 
@@ -657,6 +822,7 @@ def get_prune_preview() -> dict:
         config.get("prune_images"),
         config.get("prune_networks"),
         config.get("prune_volumes"),
+        config.get("prune_build_cache"),
     ]):
         return {"error": "No prune options selected", "hosts": []}
     
@@ -679,6 +845,7 @@ def get_prune_preview() -> dict:
     total_images = 0
     total_networks = 0
     total_volumes = 0
+    total_build_cache = 0
     
     for host in all_hosts:
         host_name = host.get("name", "Unnamed")
@@ -696,7 +863,8 @@ def get_prune_preview() -> dict:
                     "containers": [],
                     "images": [],
                     "networks": [],
-                    "volumes": []
+                    "volumes": [],
+                    "build_cache": []
                 })
                 continue
             
@@ -704,6 +872,7 @@ def get_prune_preview() -> dict:
             images_list = []
             networks_list = []
             volumes_list = []
+            build_cache_list = []
             
             # Preview containers (stopped containers)
             if config.get("prune_containers"):
@@ -798,10 +967,51 @@ def get_prune_preview() -> dict:
                 except Exception as e:
                     log(f"[{host_name}] Error listing volumes: {e}")
             
+            # Preview build cache
+            if config.get("prune_build_cache"):
+                try:
+                    # Get build cache usage via Docker API
+                    # We need to do a DRY RUN of the prune operation to see what would be deleted
+                    # because client.api.df() may return cached/stale data
+                    
+                    # Option 1: Use df() but be aware it might show stale data
+                    df_result = client.api.df()
+                    build_cache_info = df_result.get("BuildCache", [])
+                    
+                    # Filter to truly reclaimable entries
+                    # The Reclaimable field is the most accurate indicator
+                    reclaimable_cache = []
+                    for c in build_cache_info:
+                        # Prioritize Reclaimable field if present (most accurate)
+                        if "Reclaimable" in c:
+                            if c["Reclaimable"]:
+                                reclaimable_cache.append(c)
+                        # Fallback: use InUse field
+                        elif not c.get("InUse", False):
+                            reclaimable_cache.append(c)
+                    
+                    build_cache_list = [
+                        {
+                            "id": c.get("ID", "")[:12],  # Short ID like Docker CLI
+                            "type": c.get("Type", "unknown"),
+                            "size": human_bytes(c.get("Size", 0)),
+                            "reclaimable": c.get("Reclaimable", True),
+                            "inUse": c.get("InUse", False)
+                        }
+                        for c in reclaimable_cache
+                    ]
+                    
+                    # Log for debugging
+                    if build_cache_list:
+                        log(f"[{host_name}] Preview found {len(build_cache_list)} reclaimable build cache entries")
+                except Exception as e:
+                    log(f"[{host_name}] Error listing build cache: {e}")
+            
             total_containers += len(containers_list)
             total_images += len(images_list)
             total_networks += len(networks_list)
             total_volumes += len(volumes_list)
+            total_build_cache += len(build_cache_list)
             
             preview_results.append({
                 "name": host_name,
@@ -811,11 +1021,13 @@ def get_prune_preview() -> dict:
                 "images": images_list,
                 "networks": networks_list,
                 "volumes": volumes_list,
+                "build_cache": build_cache_list,
                 "totals": {
                     "containers": len(containers_list),
                     "images": len(images_list),
                     "networks": len(networks_list),
-                    "volumes": len(volumes_list)
+                    "volumes": len(volumes_list),
+                    "build_cache": len(build_cache_list)
                 }
             })
             
@@ -829,7 +1041,8 @@ def get_prune_preview() -> dict:
                 "containers": [],
                 "images": [],
                 "networks": [],
-                "volumes": []
+                "volumes": [],
+                "build_cache": []
             })
         finally:
             if client is not None:
@@ -844,7 +1057,8 @@ def get_prune_preview() -> dict:
             "containers": total_containers,
             "images": total_images,
             "networks": total_networks,
-            "volumes": total_volumes
+            "volumes": total_volumes,
+            "build_cache": total_build_cache
         }
     }
 
@@ -887,6 +1101,7 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
             config.get("prune_images"),
             config.get("prune_networks"),
             config.get("prune_volumes"),
+            config.get("prune_build_cache"),
         ]):
             log("No prune options selected. Job skipped.")
             return False
@@ -915,6 +1130,7 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
         total_images_deleted = 0
         total_networks_deleted = 0
         total_volumes_deleted = 0
+        total_build_cache_deleted = 0
         total_space_reclaimed = 0
         
         # Per-host results for detailed reporting
@@ -940,11 +1156,12 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
                         "images": 0,
                         "networks": 0,
                         "volumes": 0,
+                        "build_cache": 0,
                         "space": 0,
                     })
                     continue
                 
-                containers_deleted = images_deleted = networks_deleted = volumes_deleted = 0
+                containers_deleted = images_deleted = networks_deleted = volumes_deleted = build_cache_deleted = 0
                 space_reclaimed = 0
 
                 # Containers
@@ -993,13 +1210,29 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
                     except Exception as e:
                         log(f"[{host_name}] Error pruning volumes: {e}")
 
-                log(f"[{host_name}] Prune completed: containers={containers_deleted}, images={images_deleted}, networks={networks_deleted}, volumes={volumes_deleted}, space={human_bytes(space_reclaimed)}")
+                # Build Cache
+                if config.get("prune_build_cache"):
+                    try:
+                        log(f"[{host_name}] Pruning build cache…")
+                        # Use the API client directly for builder prune
+                        # Docker API endpoint: POST /build/prune
+                        r = client.api.prune_builds()
+                        log(f"[{host_name}] Build cache prune result: {r}")
+                        # Count the number of cache objects deleted
+                        cache_ids_deleted = r.get("CachesDeleted") or []
+                        build_cache_deleted = len(cache_ids_deleted) if cache_ids_deleted else 0
+                        space_reclaimed += int(r.get("SpaceReclaimed") or 0)
+                    except Exception as e:
+                        log(f"[{host_name}] Error pruning build cache: {e}")
+
+                log(f"[{host_name}] Prune completed: containers={containers_deleted}, images={images_deleted}, networks={networks_deleted}, volumes={volumes_deleted}, build_cache={build_cache_deleted}, space={human_bytes(space_reclaimed)}")
                 
                 # Add to totals
                 total_containers_deleted += containers_deleted
                 total_images_deleted += images_deleted
                 total_networks_deleted += networks_deleted
                 total_volumes_deleted += volumes_deleted
+                total_build_cache_deleted += build_cache_deleted
                 total_space_reclaimed += space_reclaimed
                 
                 # Record host result
@@ -1011,6 +1244,7 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
                     "images": images_deleted,
                     "networks": networks_deleted,
                     "volumes": volumes_deleted,
+                    "build_cache": build_cache_deleted,
                     "space": space_reclaimed,
                 })
                 
@@ -1025,6 +1259,7 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
                     "images": 0,
                     "networks": 0,
                     "volumes": 0,
+                    "build_cache": 0,
                     "space": 0,
                 })
             finally:
@@ -1038,7 +1273,7 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
 
         anything_deleted = any([
             total_containers_deleted, total_images_deleted, total_networks_deleted,
-            total_volumes_deleted, total_space_reclaimed > 0
+            total_volumes_deleted, total_build_cache_deleted, total_space_reclaimed > 0
         ])
 
         # Update all-time statistics (always, even if nothing was pruned)
@@ -1047,6 +1282,7 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
             images=total_images_deleted,
             networks=total_networks_deleted,
             volumes=total_volumes_deleted,
+            build_cache=total_build_cache_deleted,
             space=total_space_reclaimed
         )
 
@@ -1061,33 +1297,39 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
             "",
         ]
         
-        # Add per-host details if multiple hosts
+        # Add per-host details
         if len(all_hosts) > 1:
             summary_lines.append("📊 Per-host results:")
-            for result in host_results:
-                if result.get("success"):
-                    has_deletions = any([result['containers'], result['images'], result['networks'], result['volumes']])
-                    
-                    if has_deletions:
-                        summary_lines.append(f"• {result['name']}")
-                        if result['containers']:
-                            summary_lines.append(f"  - 🗑️ {result['containers']} containers")
-                        if result['images']:
-                            summary_lines.append(f"  - 💿 {result['images']} images")
-                        if result['networks']:
-                            summary_lines.append(f"  - 🌐 {result['networks']} networks")
-                        if result['volumes']:
-                            summary_lines.append(f"  - 📦 {result['volumes']} volumes")
-                        if result['space']:
-                            summary_lines.append(f"  - 💾 {human_bytes(result['space'])} reclaimed")
-                    else:
-                        summary_lines.append(f"• {result['name']}: ✅ Nothing to prune")
+        
+        for result in host_results:
+            if result.get("success"):
+                has_deletions = any([result.get('containers'), result.get('images'), result.get('networks'), result.get('volumes'), result.get('build_cache')])
+                
+                if has_deletions:
+                    summary_lines.append(f"• {result['name']}")
+                    if result.get('containers'):
+                        summary_lines.append(f"  - 🗑️ {result['containers']} containers")
+                    if result.get('images'):
+                        summary_lines.append(f"  - 💿 {result['images']} images")
+                    if result.get('networks'):
+                        summary_lines.append(f"  - 🌐 {result['networks']} networks")
+                    if result.get('volumes'):
+                        summary_lines.append(f"  - 📦 {result['volumes']} volumes")
+                    if result.get('build_cache'):
+                        summary_lines.append(f"  - 🏗️ {result['build_cache']} build caches")
+                    if result['space']:
+                        summary_lines.append(f"  - 💾 {human_bytes(result['space'])} reclaimed")
                 else:
-                    summary_lines.append(f"• {result['name']}: ❌ {result.get('error', 'Unknown error')}")
+                    summary_lines.append(f"• {result['name']}: ✅ Nothing to prune")
+            else:
+                summary_lines.append(f"• {result['name']}: ❌ {result.get('error', 'Unknown error')}")
+        
+        if len(all_hosts) > 1:
             summary_lines.append("")
         
         # Add totals
-        summary_lines.append("📈 Total across all hosts:")
+        if len(all_hosts) > 1:
+            summary_lines.append("📈 Total across all hosts:")
         if anything_deleted:
             if total_containers_deleted:
                 summary_lines.append(f"  - 🗑️ Containers: {total_containers_deleted}")
@@ -1097,13 +1339,16 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
                 summary_lines.append(f"  - 🌐 Networks: {total_networks_deleted}")
             if total_volumes_deleted:
                 summary_lines.append(f"  - 📦 Volumes: {total_volumes_deleted}")
+            if total_build_cache_deleted:
+                summary_lines.append(f"  - 🏗️ Build caches: {total_build_cache_deleted}")
             if total_space_reclaimed:
                 summary_lines.append(f"  - 💾 Space reclaimed: {human_bytes(total_space_reclaimed)}")
         else:
             summary_lines.append("✅ Nothing to prune this run")
 
         message = "\n".join(summary_lines)
-        send_notification("PruneMate run completed", message)
+        notif_priority = config.get("notifications", {}).get("priority", "medium")
+        send_notification("PruneMate run completed", message, priority=notif_priority)
         
         return True
     
@@ -1262,6 +1507,7 @@ def update():
     prune_images = "prune_images" in request.form
     prune_networks = "prune_networks" in request.form
     prune_volumes = "prune_volumes" in request.form
+    prune_build_cache = "prune_build_cache" in request.form
 
     provider = request.form.get("notifications_provider", "gotify")
     gotify_enabled = "gotify_enabled" in request.form
@@ -1271,6 +1517,15 @@ def update():
     ntfy_url = (request.form.get("ntfy_url") or "").strip()
     ntfy_topic = (request.form.get("ntfy_topic") or "").strip()
     ntfy_token = (request.form.get("ntfy_token") or "").strip()
+    discord_enabled = "discord_enabled" in request.form
+    discord_webhook_url = (request.form.get("discord_webhook_url") or "").strip()
+    telegram_enabled = "telegram_enabled" in request.form
+    telegram_bot_token = (request.form.get("telegram_bot_token") or "").strip()
+    telegram_chat_id = (request.form.get("telegram_chat_id") or "").strip()
+    # Parse notification priority (low/medium/high, default 'medium')
+    notification_priority = request.form.get("notification_priority", "medium").strip().lower()
+    if notification_priority not in ["low", "medium", "high"]:
+        notification_priority = "medium"
     only_on_changes = "notifications_only_on_changes" in request.form
 
     # Auto-enable selected provider if fields are filled but toggle was forgotten
@@ -1278,6 +1533,10 @@ def update():
         gotify_enabled = True
     if provider == "ntfy" and not ntfy_enabled and ntfy_url and ntfy_topic:
         ntfy_enabled = True
+    if provider == "discord" and not discord_enabled and discord_webhook_url:
+        discord_enabled = True
+    if provider == "telegram" and not telegram_enabled and telegram_bot_token and telegram_chat_id:
+        telegram_enabled = True
 
     time_value = validate_time(time_value)
 
@@ -1290,17 +1549,21 @@ def update():
         "prune_images": prune_images,
         "prune_networks": prune_networks,
         "prune_volumes": prune_volumes,
+        "prune_build_cache": prune_build_cache,
         "notifications": {
             "provider": provider,
             "gotify": {"enabled": gotify_enabled, "url": gotify_url, "token": gotify_token},
             "ntfy": {"enabled": ntfy_enabled, "url": ntfy_url, "topic": ntfy_topic, "token": ntfy_token},
+            "discord": {"enabled": discord_enabled, "webhook_url": discord_webhook_url},
+            "telegram": {"enabled": telegram_enabled, "bot_token": telegram_bot_token, "chat_id": telegram_chat_id},
+            "priority": notification_priority,
             "only_on_changes": only_on_changes,
         },
     }
 
     schedule_keys = [
         "frequency","time","day_of_week","day_of_month",
-        "prune_containers","prune_images","prune_networks","prune_volumes"
+        "prune_containers","prune_images","prune_networks","prune_volumes","prune_build_cache"
     ]
     schedule_changed = any(new_values[k] != old_config.get(k) for k in schedule_keys)
     config.update(new_values)
@@ -1332,11 +1595,12 @@ def preview_prune():
     # Save current prune settings from request body (if provided)
     try:
         data = request.get_json() or {}
-        if any(k in data for k in ["prune_containers", "prune_images", "prune_networks", "prune_volumes"]):
+        if any(k in data for k in ["prune_containers", "prune_images", "prune_networks", "prune_volumes", "prune_build_cache"]):
             config["prune_containers"] = data.get("prune_containers", False)
             config["prune_images"] = data.get("prune_images", False)
             config["prune_networks"] = data.get("prune_networks", False)
             config["prune_volumes"] = data.get("prune_volumes", False)
+            config["prune_build_cache"] = data.get("prune_build_cache", False)
             save_config()
             log("Preview requested with updated prune settings saved.")
     except Exception as e:
@@ -1355,11 +1619,12 @@ def run_confirmed():
     # Ensure latest prune settings are saved (should be saved by preview, but double-check)
     try:
         data = request.get_json() or {}
-        if any(k in data for k in ["prune_containers", "prune_images", "prune_networks", "prune_volumes"]):
+        if any(k in data for k in ["prune_containers", "prune_images", "prune_networks", "prune_volumes", "prune_build_cache"]):
             config["prune_containers"] = data.get("prune_containers", False)
             config["prune_images"] = data.get("prune_images", False)
             config["prune_networks"] = data.get("prune_networks", False)
             config["prune_volumes"] = data.get("prune_volumes", False)
+            config["prune_build_cache"] = data.get("prune_build_cache", False)
             save_config()
             log("Confirmed run with updated prune settings saved.")
     except Exception as e:
@@ -1418,6 +1683,7 @@ def test_notification():
     prune_images = "prune_images" in request.form
     prune_networks = "prune_networks" in request.form
     prune_volumes = "prune_volumes" in request.form
+    prune_build_cache = "prune_build_cache" in request.form
 
     provider = request.form.get("notifications_provider", "gotify")
     gotify_enabled = "gotify_enabled" in request.form
@@ -1427,6 +1693,15 @@ def test_notification():
     ntfy_url = (request.form.get("ntfy_url") or "").strip()
     ntfy_topic = (request.form.get("ntfy_topic") or "").strip()
     ntfy_token = (request.form.get("ntfy_token") or "").strip()
+    discord_enabled = "discord_enabled" in request.form
+    discord_webhook_url = (request.form.get("discord_webhook_url") or "").strip()
+    telegram_enabled = "telegram_enabled" in request.form
+    telegram_bot_token = (request.form.get("telegram_bot_token") or "").strip()
+    telegram_chat_id = (request.form.get("telegram_chat_id") or "").strip()
+    # Parse notification priority (low/medium/high, default 'medium')
+    notification_priority = request.form.get("notification_priority", "medium").strip().lower()
+    if notification_priority not in ["low", "medium", "high"]:
+        notification_priority = "medium"
     only_on_changes = "notifications_only_on_changes" in request.form
 
     # Auto-enable selected provider if fields are filled but toggle was forgotten
@@ -1434,6 +1709,10 @@ def test_notification():
         gotify_enabled = True
     if provider == "ntfy" and not ntfy_enabled and ntfy_url and ntfy_topic:
         ntfy_enabled = True
+    if provider == "discord" and not discord_enabled and discord_webhook_url:
+        discord_enabled = True
+    if provider == "telegram" and not telegram_enabled and telegram_bot_token and telegram_chat_id:
+        telegram_enabled = True
 
     time_value = validate_time(time_value)
 
@@ -1446,17 +1725,21 @@ def test_notification():
         "prune_images": prune_images,
         "prune_networks": prune_networks,
         "prune_volumes": prune_volumes,
+        "prune_build_cache": prune_build_cache,
         "notifications": {
             "provider": provider,
             "gotify": {"enabled": gotify_enabled, "url": gotify_url, "token": gotify_token},
             "ntfy": {"enabled": ntfy_enabled, "url": ntfy_url, "topic": ntfy_topic, "token": ntfy_token},
+            "discord": {"enabled": discord_enabled, "webhook_url": discord_webhook_url},
+            "telegram": {"enabled": telegram_enabled, "bot_token": telegram_bot_token, "chat_id": telegram_chat_id},
+            "priority": notification_priority,
             "only_on_changes": only_on_changes,
         },
     }
 
     schedule_keys = [
         "frequency","time","day_of_week","day_of_month",
-        "prune_containers","prune_images","prune_networks","prune_volumes"
+        "prune_containers","prune_images","prune_networks","prune_volumes","prune_build_cache"
     ]
     schedule_changed = any(new_values[k] != old_config.get(k) for k in schedule_keys)
     config.update(new_values)
@@ -1467,10 +1750,12 @@ def test_notification():
     
     # Test the notification with the saved config
     log("Notification test requested from UI.")
+    # Use configured priority for test notification
+    test_priority = config.get("notifications", {}).get("priority", "medium")
     ok = send_notification(
         "PruneMate test notification",
         "This is a test message from PruneMate.\n\nIf you see this, your current provider settings are working.",
-        priority=3,
+        priority=test_priority,
     )
     flash("Configuration saved. " + ("Test notification sent." if ok else "Test notification failed (check settings & logs)."), "info")
     return redirect(url_for("index"))
@@ -1515,7 +1800,11 @@ def api_stats():
             
             # Provide timestamp in seconds for format: relativeTime
             last_run_timestamp = int(last_run_dt.timestamp())
-        except Exception:
+        except (ValueError, TypeError, OSError) as e:
+            log(f"Error parsing last_run timestamp: {e}")
+            last_run_text = "Unknown"
+        except Exception as e:
+            log(f"Unexpected error in /api/stats timestamp calculation: {e}")
             last_run_text = "Unknown"
     
     return jsonify({
@@ -1524,6 +1813,7 @@ def api_stats():
         "imagesDeleted": stats.get("images_deleted", 0),
         "networksDeleted": stats.get("networks_deleted", 0),
         "volumesDeleted": stats.get("volumes_deleted", 0),
+        "buildCacheDeleted": stats.get("build_cache_deleted", 0),
         "spaceReclaimed": stats.get("total_space_reclaimed", 0),
         "spaceReclaimedHuman": human_bytes(stats.get("total_space_reclaimed", 0)),
         "firstRun": stats.get("first_run"),

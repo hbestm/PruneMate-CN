@@ -37,17 +37,19 @@ flowchart TD
     CheckOptions --> |Images ✓| PruneI[Prune Images<br/>all unused]
     CheckOptions --> |Networks ✓| PruneN[Prune Networks<br/>unused]
     CheckOptions --> |Volumes ✓| PruneV[Prune Volumes<br/>all unused + named]
+    CheckOptions --> |Build Cache ✓| PruneB[Prune Build Cache<br/>Docker builder cache]
     
     PruneC --> Aggregate
     PruneI --> Aggregate
     PruneN --> Aggregate
     PruneV --> Aggregate
+    PruneB --> Aggregate
     
     Aggregate[Aggregate Results<br/>Space + Counts] --> Stats[Update stats.json<br/>• Total runs<br/>• Resources deleted<br/>• Space reclaimed<br/>• Timestamps]
     
     Stats --> Notify{Notifications<br/>enabled?}
     
-    Notify --> |Yes + Changes| Send[Send Notification<br/>Gotify/ntfy<br/>Per-host breakdown]
+    Notify --> |Yes + Changes| Send[Send Notification<br/>Gotify/ntfy/Discord/Telegram<br/>Per-host breakdown]
     Notify --> |No or No changes| Log[Write to<br/>prunemate.log]
     Send --> Log
     Log --> Done[Done]
@@ -85,6 +87,7 @@ flowchart TD
 - **Images**: Removes ALL unused images (not just dangling) using `filters={"dangling": False}`
 - **Networks**: Removes unused networks (excluding default bridge/host/none)
 - **Volumes**: Removes ALL unused volumes including named volumes using `filters={"all": True}`
+- **Build Cache**: Removes Docker builder cache (can reclaim significant space, 10GB+)
 
 ### Multi-Host Support
 
@@ -94,8 +97,17 @@ flowchart TD
 
 ### Notification Flow
 
-- **Providers**: Gotify (self-hosted) or ntfy.sh (pub-sub)
-- **Authentication**: Bearer tokens, Basic Auth, or unauthenticated
+- **Providers**: Gotify (self-hosted), ntfy.sh (pub-sub), Discord (webhooks), or Telegram (Bot API)
+- **Authentication**: 
+  - Gotify: App tokens
+  - ntfy: Bearer tokens, Basic Auth, or unauthenticated
+  - Discord: Webhook URLs
+  - Telegram: Bot Token + Chat ID
+- **Priority System**: Text-based (Low/Medium/High) with provider-specific behavior
+  - Gotify: Numeric mapping (Low=2, Medium=5, High=8)
+  - ntfy: Numeric mapping (Low=2, Medium=3, High=5)
+  - Discord: Color mapping (Low=Green, Medium=Orange, High=Red)
+  - Telegram: Notification sound (Low=Silent, Medium/High=Sound)
 - **Smart Notifications**: Optional "only on changes" mode to reduce noise
 - **Per-host Breakdown**: Detailed results for each Docker host in multi-host setups
 

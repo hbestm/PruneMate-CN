@@ -255,17 +255,17 @@
     /* Screen reader only text (accessible but invisible) */
     .visually-hidden{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);white-space:nowrap}
     /* Collapsible notification panel */
-    #notif-card #notif-panel{transition:max-height .2s ease-out;overflow:hidden;}
+    #notif-card #notif-panel{transition:max-height .2s ease-out;overflow:hidden;will-change:max-height;transform:translateZ(0);}
     #notif-card.collapsed #notif-panel{max-height:0!important;}
     #notif-card:not(.collapsed) #notif-panel{max-height:900px;}
-    #notif-arrow{transition:transform .2s ease;}
+    #notif-arrow{transition:transform .2s ease;will-change:transform;}
     #notif-card.collapsed #notif-arrow{transform:rotate(0deg);}
     #notif-card:not(.collapsed) #notif-arrow{transform:rotate(180deg);}
     /* Collapsible Docker hosts panel */
-    #hosts-card #hosts-panel{transition:max-height .2s ease-out;overflow:hidden;}
+    #hosts-card #hosts-panel{transition:max-height .2s ease-out;overflow:hidden;will-change:max-height;transform:translateZ(0);}
     #hosts-card.collapsed #hosts-panel{max-height:0!important;}
     #hosts-card:not(.collapsed) #hosts-panel{max-height:800px;}
-    #hosts-arrow{transition:transform .2s ease;}
+    #hosts-arrow{transition:transform .2s ease;will-change:transform;}
     #hosts-card.collapsed #hosts-arrow{transform:rotate(0deg);}
     #hosts-card:not(.collapsed) #hosts-arrow{transform:rotate(180deg);}
   </style>
@@ -349,6 +349,12 @@
           <div style="text-align:center;padding:6px;background:linear-gradient(135deg,rgba(239,68,68,0.06),rgba(220,38,38,0.04));border-radius:8px;border:1px solid rgba(239,68,68,0.1);">
             <div style="font-size:1.3rem;font-weight:700;color:#f87171;font-family:'Montserrat',sans-serif;margin-bottom:1px;" id="stats-volumes">0</div>
             <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">Volumes</div>
+          </div>
+          
+          <!-- Build Cache Deleted -->
+          <div style="text-align:center;padding:6px;background:linear-gradient(135deg,rgba(34,197,94,0.06),rgba(16,185,129,0.04));border-radius:8px;border:1px solid rgba(34,197,94,0.1);">
+            <div style="font-size:1.3rem;font-weight:700;color:#34d399;font-family:'Montserrat',sans-serif;margin-bottom:1px;" id="stats-build-cache">0</div>
+            <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">Build Cache</div>
           </div>
         </div>
         
@@ -510,6 +516,16 @@
             <span class="slider"></span>
           </label>
         </div>
+
+        <!-- Toggle for pruning build cache -->
+        <div class="toggle-row">
+          <span class="label-text">All build cache</span>
+          <label class="switch">
+            <input type="checkbox" name="prune_build_cache" id="prune_build_cache"
+                   {% if config.prune_build_cache %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+        </div>
       </div>
 
       <!-- Docker Hosts Management Section -->
@@ -593,11 +609,27 @@
         <div id="notif-panel" style="overflow:hidden;">
           <div class="row inline" style="margin-top:4px;">
             <!-- Notification provider selector -->
-            <div class="field">
+            <div class="field" style="flex:0 0 auto;min-width:150px;max-width:200px;">
               <label for="notifications_provider">Provider</label><br/>
-              <select id="notifications_provider" name="notifications_provider" aria-label="Notification provider">
+              <select id="notifications_provider" name="notifications_provider" aria-label="Notification provider" style="width:100%;">
                 <option value="gotify" {% if config.notifications.provider == 'gotify' %}selected{% endif %}>Gotify</option>
                 <option value="ntfy" {% if config.notifications.provider == 'ntfy' %}selected{% endif %}>ntfy</option>
+                <option value="discord" {% if config.notifications.provider == 'discord' %}selected{% endif %}>Discord</option>
+                <option value="telegram" {% if config.notifications.provider == 'telegram' %}selected{% endif %}>Telegram</option>
+              </select>
+            </div>
+            <!-- Notification priority selector -->
+            <div class="field" style="flex:0 0 auto;min-width:120px;">
+              <label for="notification_priority">Priority</label><br/>
+              <select 
+                id="notification_priority" 
+                name="notification_priority"
+                style="width: 100px;"
+                aria-label="Notification priority"
+              >
+                <option value="low" {% if config.notifications.priority == 'low' %}selected{% endif %}>Low</option>
+                <option value="medium" {% if config.notifications.priority == 'medium' %}selected{% endif %}>Medium</option>
+                <option value="high" {% if config.notifications.priority == 'high' %}selected{% endif %}>High</option>
               </select>
             </div>
           </div>
@@ -677,6 +709,54 @@
             </div>
           </div>
 
+          <!-- Discord specific fields -->
+          <div id="discord-fields" style="margin-top:12px;display:none;">
+            <div class="toggle-row">
+              <span class="label-text" id="discord-enable-label">Enable Discord notifications</span>
+              <label class="switch">
+                <input type="checkbox" name="discord_enabled" id="discord_enabled" aria-labelledby="discord-enable-label"
+                       {% if config.notifications.discord.enabled %}checked{% endif %}>
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="row" style="margin-top:6px;">
+              <div style="flex:1;">
+                <label for="discord_webhook_url">Discord Webhook URL :</label>
+                <input type="text" id="discord_webhook_url" name="discord_webhook_url"
+                       value="{{ config.notifications.discord.webhook_url or '' }}"
+                       placeholder="https://discord.com/api/webhooks/..." aria-label="Discord webhook URL">
+              </div>
+            </div>
+          </div>
+
+          <!-- Telegram specific fields -->
+          <div id="telegram-fields" style="margin-top:12px;display:none;">
+            <div class="toggle-row">
+              <span class="label-text" id="telegram-enable-label">Enable Telegram notifications</span>
+              <label class="switch">
+                <input type="checkbox" name="telegram_enabled" id="telegram_enabled" aria-labelledby="telegram-enable-label"
+                       {% if config.notifications.telegram.enabled %}checked{% endif %}>
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="row" style="margin-top:6px;">
+              <div style="flex:1;">
+                <label for="telegram_bot_token">Bot Token :</label>
+                <input type="password" id="telegram_bot_token" name="telegram_bot_token" autocomplete="off"
+                       value="{{ config.notifications.telegram.bot_token or '' }}"
+                       placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" aria-label="Telegram bot token from @BotFather">
+              </div>
+            </div>
+            <div class="row" style="margin-top:6px;">
+              <div style="flex:1;">
+                <label for="telegram_chat_id">Chat ID :</label>
+                <input type="text" id="telegram_chat_id" name="telegram_chat_id"
+                       value="{{ config.notifications.telegram.chat_id or '' }}"
+                       placeholder="123456789 or @channelname" aria-label="Telegram chat ID or channel username">
+              </div>
+            </div>
+          </div>
+
           <!-- Test notification button -->
           <div style="margin-top:12px;">
             <button type="submit"
@@ -713,7 +793,7 @@
 
     <!-- Application footer -->
     <div class="footer">
-      PruneMate · 2025 · V1.2.8 ·
+      PruneMate · 2025 · V1.2.9 ·
       <a href="https://github.com/anoniemerd/PruneMate" target="_blank">GitHub</a>
     </div>
   </div>
@@ -903,25 +983,53 @@
       const prov = document.getElementById('notifications_provider').value;
       const gotifyBlock = document.getElementById('gotify-fields');
       const ntfyBlock = document.getElementById('ntfy-fields');
+      const discordBlock = document.getElementById('discord-fields');
+      const telegramBlock = document.getElementById('telegram-fields');
       const toggleWrapper = document.getElementById('only-on-changes-wrapper');
-      if(!gotifyBlock || !ntfyBlock || !toggleWrapper) return;
+      if(!gotifyBlock || !ntfyBlock || !discordBlock || !telegramBlock || !toggleWrapper) return;
       // Show Gotify fields and position toggle
       if(prov === 'gotify'){
         gotifyBlock.style.display = 'block';
         ntfyBlock.style.display = 'none';
+        discordBlock.style.display = 'none';
+        telegramBlock.style.display = 'none';
         if(gotifyBlock.firstElementChild){
           gotifyBlock.insertBefore(toggleWrapper, gotifyBlock.firstElementChild.nextSibling);
         } else {
           gotifyBlock.appendChild(toggleWrapper);
         }
       // Show ntfy fields and position toggle
-      } else {
+      } else if(prov === 'ntfy'){
         gotifyBlock.style.display = 'none';
         ntfyBlock.style.display = 'block';
+        discordBlock.style.display = 'none';
+        telegramBlock.style.display = 'none';
         if(ntfyBlock.firstElementChild){
           ntfyBlock.insertBefore(toggleWrapper, ntfyBlock.firstElementChild.nextSibling);
         } else {
           ntfyBlock.appendChild(toggleWrapper);
+        }
+      // Show Discord fields and position toggle
+      } else if(prov === 'discord'){
+        gotifyBlock.style.display = 'none';
+        ntfyBlock.style.display = 'none';
+        discordBlock.style.display = 'block';
+        telegramBlock.style.display = 'none';
+        if(discordBlock.firstElementChild){
+          discordBlock.insertBefore(toggleWrapper, discordBlock.firstElementChild.nextSibling);
+        } else {
+          discordBlock.appendChild(toggleWrapper);
+        }
+      // Show Telegram fields and position toggle
+      } else if(prov === 'telegram'){
+        gotifyBlock.style.display = 'none';
+        ntfyBlock.style.display = 'none';
+        discordBlock.style.display = 'none';
+        telegramBlock.style.display = 'block';
+        if(telegramBlock.firstElementChild){
+          telegramBlock.insertBefore(toggleWrapper, telegramBlock.firstElementChild.nextSibling);
+        } else {
+          telegramBlock.appendChild(toggleWrapper);
         }
       }
     }
@@ -1021,6 +1129,7 @@
           document.getElementById('stats-images').textContent = data.images_deleted || 0;
           document.getElementById('stats-networks').textContent = data.networks_deleted || 0;
           document.getElementById('stats-volumes').textContent = data.volumes_deleted || 0;
+          document.getElementById('stats-build-cache').textContent = data.build_cache_deleted || 0;
           document.getElementById('stats-first').textContent = formatDate(data.first_run);
           document.getElementById('stats-last').textContent = formatDate(data.last_run);
         })
@@ -1383,7 +1492,8 @@
         prune_containers: document.getElementById('prune_containers')?.checked || false,
         prune_images: document.getElementById('prune_images')?.checked || false,
         prune_networks: document.getElementById('prune_networks')?.checked || false,
-        prune_volumes: document.getElementById('prune_volumes')?.checked || false
+        prune_volumes: document.getElementById('prune_volumes')?.checked || false,
+        prune_build_cache: document.getElementById('prune_build_cache')?.checked || false
       };
       
       fetch('{{ url_for("preview_prune") }}', {
@@ -1399,8 +1509,8 @@
         }
         
         let html = '';
-        const totals = data.totals || {containers: 0, images: 0, networks: 0, volumes: 0};
-        const hasItems = totals.containers > 0 || totals.images > 0 || totals.networks > 0 || totals.volumes > 0;
+        const totals = data.totals || {containers: 0, images: 0, networks: 0, volumes: 0, build_cache: 0};
+        const hasItems = totals.containers > 0 || totals.images > 0 || totals.networks > 0 || totals.volumes > 0 || totals.build_cache > 0;
         
         if (!hasItems) {
           html = '<div style="text-align: center; padding: 40px; color: var(--accent-strong);"><div style="font-size: 2rem; margin-bottom: 12px;">✅</div><p style="font-size: 1.1rem; margin-bottom: 8px;">Nothing to prune!</p><p style="color: var(--muted); font-size: 0.9rem;">Your Docker resources are already clean.</p></div>';
@@ -1428,6 +1538,9 @@
         if (totals.volumes > 0) {
           html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.volumes + '</div><div style="color: var(--muted); font-size: 0.85rem;">Volumes</div></div>';
         }
+        if (totals.build_cache > 0) {
+          html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.build_cache + '</div><div style="color: var(--muted); font-size: 0.85rem;">Build Cache</div></div>';
+        }
         
         html += '</div></div>';
         
@@ -1442,7 +1555,7 @@
               return;
             }
             
-            const hostTotal = host.totals.containers + host.totals.images + host.totals.networks + host.totals.volumes;
+            const hostTotal = host.totals.containers + host.totals.images + host.totals.networks + host.totals.volumes + (host.totals.build_cache || 0);
             if (hostTotal === 0) return; // Skip hosts with nothing to prune
             
             html += '<div style="background: rgba(148,163,184,0.04); border: 1px solid rgba(148,163,184,0.08); border-radius: 12px; padding: 16px; margin-bottom: 16px;">';
@@ -1495,6 +1608,19 @@
               html += '</div></div>';
             }
             
+            // Build Cache
+            if (host.build_cache && host.build_cache.length > 0) {
+              html += '<div style="margin-bottom: 12px;"><strong style="color: var(--accent); font-size: 0.9rem;">🏗️ Build Cache (' + host.build_cache.length + '):</strong>';
+              html += '<div style="margin-top: 6px; max-height: 100px; overflow-y: auto; font-size: 0.85rem; color: var(--muted);">';
+              host.build_cache.slice(0, 10).forEach(cache => {
+                html += '<div style="padding: 4px 0;">• ' + cache.id + ' (' + cache.type + ', ' + cache.size + ')</div>';
+              });
+              if (host.build_cache.length > 10) {
+                html += '<div style="padding: 4px 0; font-style: italic;">... and ' + (host.build_cache.length - 10) + ' more</div>';
+              }
+              html += '</div></div>';
+            }
+            
             html += '</div>';
           });
         }
@@ -1529,7 +1655,8 @@
         prune_containers: document.getElementById('prune_containers')?.checked || false,
         prune_images: document.getElementById('prune_images')?.checked || false,
         prune_networks: document.getElementById('prune_networks')?.checked || false,
-        prune_volumes: document.getElementById('prune_volumes')?.checked || false
+        prune_volumes: document.getElementById('prune_volumes')?.checked || false,
+        prune_build_cache: document.getElementById('prune_build_cache')?.checked || false
       };
       
       fetch('{{ url_for("run_confirmed") }}', {

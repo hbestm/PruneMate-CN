@@ -8,7 +8,7 @@
 <p align="center"><em>Docker image & resource cleanup helper, on a schedule!</em></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.2.8-purple?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/version-1.2.9-purple?style=for-the-badge"/>
   <img src="https://img.shields.io/badge/python-3.12-yellow?style=for-the-badge&logo=python&logoColor=ffffff"/>
   <img src="https://img.shields.io/badge/docker-compose-0db7ed?style=for-the-badge&logo=docker&logoColor=ffffff"/>
   <img src="https://img.shields.io/badge/license-AGPLv3-orange?style=for-the-badge"/>
@@ -32,10 +32,11 @@ A sleek, lightweight web interface to **automatically clean up Docker resources*
 - 🌍 **Timezone aware** - Configure your local timezone
 - 🕒 **12/24-hour time format** - Choose your preferred time display
 - 🐳 **Multi-host support** - Manage multiple Docker hosts from one interface (requires docker-socket-proxy on remote hosts)
-- 🧹 **Selective cleanup** - Choose what to prune: containers, images, networks, volumes
+- 🧹 **Selective cleanup** - Choose what to prune: containers, images, networks, volumes, **build cache**
+- 🏗️ **Build cache cleanup** - Reclaim significant space by pruning Docker builder cache (often 10GB+)
 - 📊 **All-Time Statistics** - Track cumulative space reclaimed and resources deleted across all runs
 - 🏠 **Homepage integration** - Display statistics in your Homepage dashboard
-- 🔔 **Smart notifications** - Gotify or ntfy.sh support with Bearer token & Basic Auth, optional change-only alerts
+- 🔔 **Smart notifications** - Gotify, ntfy.sh, Discord, or Telegram support with optional change-only alerts
 - 🎨 **Modern UI** - Dark theme with smooth animations and responsive design
 - 🔒 **Safe & controlled** - Manual trigger with preview and detailed logging
 - 📈 **Detailed reports** - See exactly what was cleaned and how much space was reclaimed
@@ -81,7 +82,7 @@ Add external Docker hosts via [docker-socket-proxy](https://github.com/Tecnativa
 </p>
 
 ### Notification Settings
-Set up notifications via Gotify or ntfy.sh to stay informed about cleanup results.
+Set up notifications via Gotify, ntfy.sh, Discord, or Telegram to stay informed about cleanup results.
 
 <p align="center">
   <img width="400" height="400" alt="prunemate-notifications" src="https://github.com/user-attachments/assets/73a06c4d-fffa-40eb-a010-239d7d364004" /> 
@@ -108,6 +109,13 @@ ntfy :
 <p align="center">
   <img width="400" height="400" alt="prunemate-results" src="https://github.com/user-attachments/assets/fd214db5-34ef-4e3b-8c73-b78262964739" />
 
+</p>
+
+Discord :
+<p align="center">
+  <img width="400" height="400" alt="prunemate-discord" src="https://github.com/user-attachments/assets/fd214db5-34ef-4e3b-8c73-b78262964739" />
+
+</p>
 </p>
 
 
@@ -244,9 +252,9 @@ Access the web interface at `http://localhost:7676/` (or your server IP) to conf
 - ☑️ All unused volumes
 
 **Notification Settings:**
-- **Provider:** Gotify or ntfy.sh
-- **URL:** Your notification server URL
-- **Token/Topic:** Authentication token (Gotify) or topic name (ntfy)
+- **Provider:** Gotify, ntfy.sh, Discord, or Telegram
+- **Configuration:** Provider-specific credentials (URL/Token for Gotify, URL/Topic for ntfy, Webhook URL for Discord, Bot Token/Chat ID for Telegram)
+- **Priority:** Low (silent), Medium, or High priority notifications (provider-dependent)
 - **Only notify on changes:** Only send notifications when something was actually cleaned
 
 ---
@@ -337,6 +345,50 @@ PruneMate tracks cumulative statistics across all prune runs:
 - **Mobile:** Install the ntfy app ([Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy) / [iOS](https://apps.apple.com/app/ntfy/id1625396347)) and subscribe to your topic
 - **Desktop:** Use ntfy desktop app or web browser
 
+### Discord
+
+[Discord](https://discord.com/) webhooks allow notifications directly to your Discord server.
+
+**Setup steps:**
+1. Open your Discord server settings
+2. Go to **Integrations** → **Webhooks**
+3. Click **New Webhook** or edit existing webhook
+4. Copy the **Webhook URL**
+5. Configure in PruneMate:
+   - **Provider:** Discord
+   - **Webhook URL:** `https://discord.com/api/webhooks/...`
+
+**Priority colors:**
+- **Low:** Green (informational)
+- **Medium:** Orange (warning)
+- **High:** Red (critical)
+
+### Telegram
+
+[Telegram Bot API](https://core.telegram.org/bots) enables notifications via Telegram bots.
+
+**Setup steps:**
+1. Open Telegram and search for **@BotFather**
+2. Send `/newbot` and follow the instructions
+3. Give your bot a name (e.g., "PruneMate Notifications")
+4. Give your bot a username ending in "bot" (e.g., "prunemate_notif_bot")
+5. Copy the **Bot Token** (format: `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
+6. Get your **Chat ID**:
+   - **Easy method:** Message **@userinfobot** or **@getmyid_bot** to get your Chat ID
+   - **Alternative:** Message your bot, then visit `https://api.telegram.org/bot<BOT_TOKEN>/getUpdates` and find `"chat":{"id":123456789}`
+7. Configure in PruneMate:
+   - **Provider:** Telegram
+   - **Bot Token:** Your bot token from BotFather
+   - **Chat ID:** Your numeric chat ID (or `@channelname` for channels)
+
+**Priority behavior:**
+- **Low:** Silent notifications (no sound)
+- **Medium/High:** Normal notifications with sound
+
+**Advanced usage:**
+- **Groups:** Add bot to group, get group Chat ID (starts with `-`)
+- **Channels:** Use channel username with `@` (e.g., `@mychannel`) or numeric ID
+
 ---
 
 
@@ -361,6 +413,7 @@ services:
       - IMAGES=1
       - NETWORKS=1
       - VOLUMES=1
+      - BUILD=1         # REQUIRED FOR BUILD CACHE PRUNE
       - POST=1          # Required for prune operations
     ports:
       - "2375:2375"
@@ -368,6 +421,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
 ```
+
+> **⚠️ IMPORTANT:** The `BUILD=1` environment variable is **REQUIRED** to enable Docker build cache pruning. Without it, build cache prune operations will fail with a 403 error.
 
 **2. Add hosts in PruneMate UI:**
 - Navigate to **Docker Hosts** section
@@ -431,6 +486,7 @@ The `/api/stats` endpoint returns the following fields:
 | `imagesDeleted` | number | Total images deleted across all runs | `number` |
 | `networksDeleted` | number | Total networks deleted across all runs | `number` |
 | `volumesDeleted` | number | Total volumes deleted across all runs | `number` |
+| `buildCacheDeleted` | number | Total build cache entries deleted across all runs | `number` |
 | `spaceReclaimed` | number | Total space reclaimed in bytes | `number` |
 | `spaceReclaimedHuman` | string | Human-readable space reclaimed (e.g., "2.5 GB") | `text` |
 | `lastRunText` | string | Relative time as text (e.g., "2h ago") | `text` |
@@ -447,6 +503,7 @@ The `/api/stats` endpoint returns the following fields:
   "imagesDeleted": 89,
   "networksDeleted": 12,
   "volumesDeleted": 7,
+  "buildCacheDeleted": 715,
   "spaceReclaimed": 5368709120,
   "spaceReclaimedHuman": "5.00 GB",
   "lastRunText": "2h ago",
@@ -485,16 +542,23 @@ The `/api/stats` endpoint returns the following fields:
 
 ## 📜 Release Notes
 
+### Version 1.2.9 (December 2025)
+- 🏗️ **NEW** Docker build cache pruning - Clean up Docker builder cache (can reclaim 10GB+)
+  - **⚠️ Requires `BUILD=1` in docker-socket-proxy for remote hosts**
+- 💬 **NEW** Discord notification provider - Webhook-based notifications with color-coded priorities
+  - Configure with Webhook URL from Discord server integrations
+  - Priority colors: Low=Green, Medium=Orange, High=Red
+- 📱 **NEW** Telegram notification provider - Full bot notification support
+  - Configure with Bot Token (from @BotFather) and Chat ID
+  - Priority support: Low=silent, Medium/High=normal sound
+- 🎯 **NEW** Text-based priority system - Changed from numeric (1-10) to text (Low/Medium/High)
+  - More intuitive and user-friendly
+  - Default priority changed to "Medium"
+  - Automatic migration from numeric priorities
+
 ### Version 1.2.8 (December 2025)
 - 🔍 **NEW** Prune preview before execution - See exactly what will be deleted before running
-  - Detailed list of containers, images, networks, and volumes to be removed
-  - Per-host breakdown for multi-host setups
-  - Two-step confirmation process for safer manual pruning
 - 🏠 **NEW** Homepage dashboard integration - `/api/stats` endpoint for customapi widget
-  - Display all-time statistics in your Homepage dashboard
-  - Shows prune runs, deleted resources, and space saved
-  - Easy setup with customapi widget configuration
-
 
 📖 **[View full changelog](CHANGELOG.md)**
 
