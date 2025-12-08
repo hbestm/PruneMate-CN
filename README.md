@@ -56,7 +56,7 @@ The overall look and feel of the PruneMate dashboard
 Track cumulative prune statistics showing total space reclaimed, resources deleted, and run history.
 
 <p align="center">
-  <img width="400" height="400" alt="prunemate-statistics" src="https://github.com/user-attachments/assets/a05eef40-8fb8-4387-93f8-7a25f3c8aef7" /> 
+  <img width="400" height="400" alt="prunemate-statistics" src="https://github.com/user-attachments/assets/a50a3f14-8b14-4ec0-9101-6509247c2b53" /> 
 </p>
 
 ### Schedule Configuration
