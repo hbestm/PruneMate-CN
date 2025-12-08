@@ -70,7 +70,7 @@ Configure when and how often PruneMate should clean up your Docker resources.
 Select which Docker resources to clean up and configure advanced options.
 
 <p align="center">
-  <img width="400" height="400" alt="prunemate-cleanup" src="https://github.com/user-attachments/assets/70ae1e8f-49a1-4c89-ac46-685d804ee3db" />
+  <img width="400" height="400" alt="prunemate-cleanup" src="https://github.com/user-attachments/assets/e582ecdb-216f-4465-8a55-5aea371eb825" />
 </p>
 
 ### External Docker hosts
