@@ -235,6 +235,38 @@
       opacity:0.9;
     }
 
+    .btn-logout {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--glass-border);
+      padding: 8px 14px;
+      border-radius: 9999px;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(4px);
+      z-index: 10;
+    }
+
+    .btn-logout:hover {
+      background: rgba(239, 68, 68, 0.1);
+      color: #fca5a5;
+      border-color: rgba(239, 68, 68, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .btn-logout svg {
+      width: 16px;
+      height: 16px;
+      stroke-width: 2.5;
+    }
 
     /* Mobile responsive styles for smaller screens */
     @media (max-width: 640px){
@@ -248,6 +280,8 @@
       /* Schedule grid: stack vertically on mobile */
       .card.schedule .row.inline{grid-template-columns:1fr!important;gap:10px;}
       .card.schedule .row.inline .field{width:100%;}
+      .btn-logout span { display: none; }
+      .btn-logout { padding: 8px; }
     }
 
     /* Utility classes */
@@ -281,6 +315,14 @@
 
   <!-- Main application container -->
   <div class="container">
+    {% if session.get('logged_in') %}
+    <a href="{{ url_for('logout') }}" class="btn-logout" title="Logout">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+      </svg>
+      <span>Logout</span>
+    </a>
+    {% endif %}
     <!-- Header with logo and title -->
     <div class="header">
       <div class="logo-wrap">
