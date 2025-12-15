@@ -235,6 +235,54 @@ http://<your-server-ip>:7676/
 | `PRUNEMATE_TZ` | `UTC` | Timezone for scheduling (e.g., `Europe/Amsterdam`, `America/New_York`) |
 | `PRUNEMATE_TIME_24H` | `true` | Time format: `true` for 24-hour, `false` for 12-hour (AM/PM) |
 | `PRUNEMATE_CONFIG` | `/config/config.json` | Path to configuration file |
+| `PRUNEMATE_AUTH_USER` | `admin` | Username for authentication (optional, only used when auth is enabled) |
+| `PRUNEMATE_AUTH_PASSWORD_HASH` | _(none)_ | Base64-encoded password hash (enables authentication when set) |
+
+### 🔐 Authentication (Optional)
+
+PruneMate supports optional password protection for the web interface and API endpoints.
+
+**Key features:**
+- 🔒 **Form-based login** - Styled login page matching the app's design
+- 🔑 **Secure hashing** - Passwords are hashed using scrypt (industry standard)
+- 🌐 **API compatibility** - Basic Auth fallback for external tools (Homepage, Dashy, etc.)
+- 🚪 **Logout button** - Convenient session management
+
+**To enable authentication:**
+
+1. **Generate a password hash** using the built-in tool:
+
+```bash
+docker run --rm anoniemerd/prunemate:latest python prunemate.py --gen-hash "your_password"
+```
+
+This outputs a Base64-encoded hash (safe for YAML, no special characters):
+```
+c2NyeXB0OjMyNzY4Ojg6MSRvcDdnZFlGR1JmRFp4Y1RjJDBmMzNlYzc4NzExZTI4MzllYjk0MWFiOTZkOGUyZGNjNGRhMzU2NTlmMGI1ZDg0NjhjZTdkMThhODhmNmQ3ZGRhOGU4YzdmMDYxMWZiNzAyYjA0ZGNhNTBjZWMxZjFlYzc3ZjhlNzJhYmM0MmQ3OTQ5NDM2MDUzZWRlZjlhZGY0
+```
+
+> **Why Base64?** Raw scrypt hashes contain `$` characters that Docker Compose interprets as environment variables, corrupting the hash. Base64 encoding produces alphanumeric strings that YAML handles safely without escaping.
+
+2. **Add to your docker-compose.yaml:**
+
+```yaml
+environment:
+  - PRUNEMATE_AUTH_USER=admin  # Optional (default: admin)
+  - PRUNEMATE_AUTH_PASSWORD_HASH=c2NyeXB0OjMyNzY4Ojg6MSRvcDdnZFlGR1JmRFp4Y1RjJDBmMzNlYzc4...
+```
+
+3. **Restart the container:**
+
+```bash
+docker-compose up -d
+```
+
+**Important notes:**
+- Authentication is **opt-in** - only enabled when `PRUNEMATE_AUTH_PASSWORD_HASH` is set
+- Without the hash variable, the app runs in open mode (backward compatible)
+- For API clients (Homepage, etc.), use Basic Auth with your actual password (not the hash)
+- The hash is Base64-encoded to prevent Docker Compose from interpreting `$` characters as variables
+
 
 ### Web Interface Settings
 

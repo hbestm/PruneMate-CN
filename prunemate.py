@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import logging
 import tempfile
@@ -10,7 +11,8 @@ import urllib.parse
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, Response, make_response
+from werkzeug.security import check_password_hash, generate_password_hash
 from filelock import FileLock, Timeout
 from gunicorn.app.base import BaseApplication
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -1453,6 +1455,121 @@ def heartbeat():
     check_and_run_scheduled_job()
 
 
+# ---- Authentication Logic ----
+def is_auth_enabled():
+    """Check if authentication is enabled via environment variables."""
+    # Only enabled if hash is present
+    return bool(os.environ.get("PRUNEMATE_AUTH_PASSWORD_HASH"))
+
+
+def check_auth(username, password):
+    """Verify username and password against environment variables."""
+    expected_user = os.environ.get("PRUNEMATE_AUTH_USER", "admin")
+    password_hash = os.environ.get("PRUNEMATE_AUTH_PASSWORD_HASH")
+
+    if not password_hash:
+        return False
+
+    # Check username
+    if username != expected_user:
+        return False
+
+    # Handle Base64 encoded hashes
+    try:
+        password_hash = base64.b64decode(password_hash).decode("utf-8")
+    except Exception:
+        pass
+    
+    # Check password hash
+    try:
+        return check_password_hash(password_hash, password)
+    except Exception:
+        return False
+
+
+def request_wants_json():
+    """Check if client wants JSON response."""
+    best = request.accept_mimetypes.best_match(['application/json', 'text/html'])
+    return best == 'application/json' and request.accept_mimetypes[best] > request.accept_mimetypes['text/html']
+
+
+@app.before_request
+def require_auth():
+    """Intercept requests and ensure user is authenticated."""
+    if not is_auth_enabled():
+        return
+
+    # Allow static resources and login page
+    if request.endpoint in ('static', 'login', 'logout'):
+        return
+
+    # Check if user is logged in via session
+    if session.get('logged_in'):
+        return
+
+    # API/CLI Clients (Basic Auth) or JSON requests
+    # If Authorization header is present, try Basic Auth
+    auth = request.authorization
+    if auth:
+        if check_auth(auth.username, auth.password):
+            # Session-less auth for API
+            return
+    
+    # If we are here, auth failed or is missing
+    
+    # For API/Robots: Return 401 Basic Auth challenge
+    # Detect if it's likely an API client (User-Agent or Accept header)
+    ua = request.user_agent.string.lower()
+    is_browser = any(x in ua for x in ['mozilla', 'chrome', 'safari', 'edge']) and 'curl' not in ua and 'python' not in ua
+    
+    if not is_browser or request_wants_json() or request.path.startswith('/api/'):
+        return Response(
+            'Could not verify your access level for that URL.\n'
+            'You have to login with proper credentials', 401,
+            {'WWW-Authenticate': 'Basic realm="PruneMate Login"'}
+        )
+    
+    # For Browsers: Redirect to login page
+    return redirect(url_for('login'))
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """Handle login page and authentication."""
+    if session.get('logged_in'):
+        return redirect(url_for('index'))
+
+    if not is_auth_enabled():
+        return redirect(url_for("index"))
+        
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        
+        if check_auth(username, password):
+            session['logged_in'] = True
+            session['user'] = username
+            
+            # Use a safe next URL or default to index
+            next_url = request.args.get('next')
+            if not next_url or next_url.startswith('//') or ':' in next_url:
+                next_url = url_for('index')
+            
+            return redirect(next_url)
+        else:
+            flash("Invalid credentials", "error")
+            
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    """Clear session and redirect to login."""
+    session.clear()
+    return redirect(url_for("login"))
+
+
+
 @app.route("/")
 def index():
     """Render the main configuration page."""
@@ -1969,6 +2086,19 @@ class StandaloneApplication(BaseApplication):
 
 
 if __name__ == "__main__":
+    # CLI Tool: Generate Hash
+    if len(sys.argv) > 1 and sys.argv[1] == "--gen-hash":
+        if len(sys.argv) > 2:
+            password = sys.argv[2]
+            # Generate hash
+            raw_hash = generate_password_hash(password)
+            safe_hash = base64.b64encode(raw_hash.encode("utf-8")).decode("utf-8")
+            print(safe_hash)
+            sys.exit(0)
+        else:
+            print("Usage: python prunemate.py --gen-hash <password>")
+            sys.exit(1)
+
     load_config()
     scheduler.add_job(heartbeat, CronTrigger(second=0), id="heartbeat", max_instances=1, coalesce=True)
     log("Scheduler heartbeat job started (every minute at :00).")

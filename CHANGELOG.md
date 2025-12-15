@@ -4,6 +4,17 @@ All notable changes to PruneMate will be documented in this file.
 
 
 ### Added
+- 🔐 **Optional authentication system** - Secure password protection for web interface and API
+  - Form-based login with styled page matching app design
+  - Scrypt password hashing (32768 iterations, industry standard)
+  - Base64-encoded hashes to prevent Docker Compose from interpreting `$` as environment variables
+  - Built-in hash generator: `docker run --rm anoniemerd/prunemate python prunemate.py --gen-hash "password"`
+  - Session management with secure HttpOnly cookies
+  - Basic Auth fallback for API clients (Homepage, Dashy, etc.)
+  - Logout button in dashboard top-right corner
+  - Opt-in design: only enabled when `PRUNEMATE_AUTH_PASSWORD_HASH` is set
+  - Backward compatible: runs in open mode without auth variables
+  - New environment variables: `PRUNEMATE_AUTH_USER` (default: admin), `PRUNEMATE_AUTH_PASSWORD_HASH`
 - 🏗️ **Docker build cache pruning support** - New option to clean up Docker builder cache
   - Can reclaim significant disk space
   - Uses Docker API's `/build/prune` endpoint

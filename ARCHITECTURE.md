@@ -6,7 +6,13 @@ This document provides a detailed visual representation of PruneMate's internal 
 
 ```mermaid
 flowchart TD
-    Start([PruneMate]) --> WebUI[Web UI<br/>Port 8080]
+    Start([PruneMate]) --> Auth{Auth<br/>Enabled?}
+    Auth -->|No| WebUI[Web UI<br/>Port 8080]
+    Auth -->|Yes| Login[Login Page<br/>Session Auth]
+    Login -->|Authenticated| WebUI
+    Login -->|API Client| BasicAuth[Basic Auth<br/>Fallback]
+    BasicAuth -->|Valid| WebUI
+    
     Start --> Scheduler[Scheduler<br/>every minute]
     Start --> API[API Endpoints<br/>/api/stats]
     
