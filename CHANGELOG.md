@@ -2,6 +2,7 @@
 
 All notable changes to PruneMate will be documented in this file.
 
+## [V1.3.0] - December 2025
 
 ### Added
 - 🔐 **Optional authentication system** - Secure password protection for web interface and API
@@ -15,6 +16,7 @@ All notable changes to PruneMate will be documented in this file.
   - Opt-in design: only enabled when `PRUNEMATE_AUTH_PASSWORD_HASH` is set
   - Backward compatible: runs in open mode without auth variables
   - New environment variables: `PRUNEMATE_AUTH_USER` (default: admin), `PRUNEMATE_AUTH_PASSWORD_HASH`
+  - Credit: [@difagume](https://github.com/difagume)
 - 🏗️ **Docker build cache pruning support** - New option to clean up Docker builder cache
   - Can reclaim significant disk space
   - Uses Docker API's `/build/prune` endpoint

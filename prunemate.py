@@ -694,7 +694,7 @@ def _send_discord(cfg: dict, title: str, message: str, priority: str = "medium")
     # Discord requires proper headers including User-Agent
     headers = {
         "Content-Type": "application/json",
-        "User-Agent": "PruneMate/1.2.9 (Docker cleanup bot)"
+        "User-Agent": "PruneMate/1.3.0 (Docker cleanup bot)"
     }
     req = urllib.request.Request(webhook_url, data=data, headers=headers, method="POST")
     try:
@@ -750,7 +750,7 @@ def _send_telegram(cfg: dict, title: str, message: str, priority: str = "medium"
         data=payload,
         headers={
             "Content-Type": "application/json",
-            "User-Agent": "PruneMate/1.2.9 (Docker cleanup bot)"
+            "User-Agent": "PruneMate/1.3.0 (Docker cleanup bot)"
         },
         method="POST"
     )

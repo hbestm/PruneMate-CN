@@ -8,7 +8,7 @@
 <p align="center"><em>Docker image & resource cleanup helper, on a schedule!</em></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.2.9-purple?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/version-1.3.0-purple?style=for-the-badge"/>
   <img src="https://img.shields.io/badge/python-3.12-yellow?style=for-the-badge&logo=python&logoColor=ffffff"/>
   <img src="https://img.shields.io/badge/docker-compose-0db7ed?style=for-the-badge&logo=docker&logoColor=ffffff"/>
   <img src="https://img.shields.io/badge/license-AGPLv3-orange?style=for-the-badge"/>
@@ -38,7 +38,8 @@ A sleek, lightweight web interface to **automatically clean up Docker resources*
 - 🏠 **Homepage integration** - Display statistics in your Homepage dashboard
 - 🔔 **Smart notifications** - Gotify, ntfy.sh, Discord, or Telegram support with optional change-only alerts
 - 🎨 **Modern UI** - Dark theme with smooth animations and responsive design
-- 🔒 **Safe & controlled** - Manual trigger with preview and detailed logging
+- �🔒 **Secure authentication** - Optional login protection with password hashing and Basic Auth support
+- �🔒 **Safe & controlled** - Manual trigger with preview and detailed logging
 - 📈 **Detailed reports** - See exactly what was cleaned and how much space was reclaimed
 
 ---
@@ -146,6 +147,9 @@ services:
     environment:
       - PRUNEMATE_TZ=Europe/Amsterdam # Change this to your desired timezone
       - PRUNEMATE_TIME_24H=true #false for 12-Hour format (AM/PM)
+      # Optional: Enable authentication (generate hash with: docker run --rm anoniemerd/prunemate python prunemate.py --gen-hash "password")
+      # - PRUNEMATE_AUTH_USER=admin
+      # - PRUNEMATE_AUTH_PASSWORD_HASH=your_base64_encoded_hash_here
     restart: unless-stopped
 ```
 
@@ -175,6 +179,9 @@ services:
     environment:
       - PRUNEMATE_TZ=Europe/Amsterdam # Change this to your desired timezone
       - PRUNEMATE_TIME_24H=true #false for 12-Hour format (AM/PM)
+            # Optional: Enable authentication (generate hash with: docker run --rm anoniemerd/prunemate python prunemate.py --gen-hash "password")
+      # - PRUNEMATE_AUTH_USER=admin
+      # - PRUNEMATE_AUTH_PASSWORD_HASH=your_base64_encoded_hash_here
     restart: unless-stopped
 ```
 
@@ -628,6 +635,22 @@ Have questions or need help?
 **Author:** Anoniemerd  
 🐙 GitHub: <https://github.com/anoniemerd>  
 📦 Repository: <https://github.com/anoniemerd/PruneMate>
+
+---
+
+## 👥 Contributors
+
+I'm grateful for the contributions that make PruneMate better!
+
+### Contributors
+- **[@difagume](https://github.com/difagume)** - 🔐 Authentication system implementation (V1.3.0)
+- **[@shollyethan](https://github.com/shollyethan)** - 🎨 Logo redesign & added the logo to Self-Hosted Dashboard Icons
+
+### Project maintainer/owner
+- **[anoniemerd](https://github.com/anoniemerd)** - Project creator and maintainer
+
+
+---
 
 ### 📜 License — AGPLv3
 
