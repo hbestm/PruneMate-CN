@@ -270,6 +270,24 @@ c2NyeXB0OjMyNzY4Ojg6MSRvcDdnZFlGR1JmRFp4Y1RjJDBmMzNlYzc4NzExZTI4MzllYjk0MWFiOTZk
 
 > **Why Base64?** Raw scrypt hashes contain `$` characters that Docker Compose interprets as environment variables, corrupting the hash. Base64 encoding produces alphanumeric strings that YAML handles safely without escaping.
 
+> **✅ Special characters that work well:**
+> - Hash characters: `#`
+> - At sign: `@` 
+> - Percent: `%`
+> - Asterisk: `*`
+> - Ampersand: `&`
+> - Caret: `^`
+>
+> **⚠️ Avoid these characters:**
+> - Exclamation mark: `!` (bash history expansion)
+> - Dollar sign: `$` (variable expansion - even Base64 encoded, can cause issues in some contexts)
+>
+> **Safe examples:**
+> - `MyPassword#123`
+> - `Test@secure%pass`
+> - `prunemate&admin^2024`
+> - `MyPass*Admin#99`
+
 2. **Add to your docker-compose.yaml:**
 
 ```yaml

@@ -68,6 +68,18 @@ config_lock = threading.RLock()
 # In-memory cache (best-effort) for last run; authoritative value is on disk
 last_run_key = {"value": None}
 
+# ---- Early exit for CLI tools before initializing heavy components ----
+if len(sys.argv) > 1 and sys.argv[1] == "--gen-hash":
+    if len(sys.argv) > 2:
+        password = sys.argv[2]
+        # Generate hash
+        raw_hash = generate_password_hash(password)
+        safe_hash = base64.b64encode(raw_hash.encode("utf-8")).decode("utf-8")
+        print(safe_hash)
+        sys.exit(0)
+    else:
+        print("Usage: python prunemate.py --gen-hash <password>")
+        sys.exit(1)
 
 def configure_logging():
     """Configure logging with console and rotating file handlers."""
@@ -2086,19 +2098,6 @@ class StandaloneApplication(BaseApplication):
 
 
 if __name__ == "__main__":
-    # CLI Tool: Generate Hash
-    if len(sys.argv) > 1 and sys.argv[1] == "--gen-hash":
-        if len(sys.argv) > 2:
-            password = sys.argv[2]
-            # Generate hash
-            raw_hash = generate_password_hash(password)
-            safe_hash = base64.b64encode(raw_hash.encode("utf-8")).decode("utf-8")
-            print(safe_hash)
-            sys.exit(0)
-        else:
-            print("Usage: python prunemate.py --gen-hash <password>")
-            sys.exit(1)
-
     load_config()
     scheduler.add_job(heartbeat, CronTrigger(second=0), id="heartbeat", max_instances=1, coalesce=True)
     log("Scheduler heartbeat job started (every minute at :00).")
