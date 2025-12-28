@@ -2,6 +2,35 @@
 
 All notable changes to PruneMate will be documented in this file.
 
+## [V1.3.1] - December 2025
+
+### Added
+- 🔀 **Schedule enable/disable toggle** - New UI toggle to control automatic scheduling
+  - "Enable automatic schedule" switch in Schedule section
+  - Allows running manual cleanups only without affecting scheduled runs
+  - Scheduler still heartbeats every minute but skips execution when disabled
+  - Setting persists in config.json and defaults to enabled for existing installations
+- 🏗️ **Multi-architecture Docker image support** - Build once, run anywhere
+  - Native support for amd64 and arm64 architectures
+  - Works seamlessly on Intel/AMD, Raspberry Pi 4/5, Apple Silicon M1/M2/M3, and ARM-based NAS
+  - Docker Buildx multi-platform builds for efficient distribution
+  - No more local builds required for ARM systems
+  - Single docker-compose.yaml works on all architectures
+
+### Fixed
+- 🏠 **Homepage widget integration with authentication** - Stats endpoints now work with auth enabled
+  - `/stats` and `/api/stats` endpoints accessible without authentication
+  - Required for Homepage and Dashy widgets to display statistics when login is enabled
+  - Backward compatible: endpoints contain non-sensitive Docker cleanup statistics only
+- 📊 **Schedule configuration logging** - Added `schedule_enabled` to effective config output
+  - Proper logging of all schedule settings including new toggle
+
+### Changed
+- 📦 **Docker Compose default** - Changed from local build to pre-built multi-arch image
+  - docker-compose.yaml now uses `image: anoniemerd/prunemate:latest` by default
+  - Auto-detects correct architecture (amd64/arm64) at pull time
+  - Significantly faster deployment and smaller initial setup
+
 ## [V1.3.0] - December 2025
 
 ### Added

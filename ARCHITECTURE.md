@@ -14,14 +14,16 @@ flowchart TD
     BasicAuth -->|Valid| WebUI
     
     Start --> Scheduler[Scheduler<br/>every minute]
-    Start --> API[API Endpoints<br/>/api/stats]
+    Start --> API[API Endpoints<br/>/stats, /api/stats<br/>no auth required]
     
-    WebUI --> |Configure| Config[(config.json<br/>• Schedule<br/>• Prune options<br/>• Notifications<br/>• Remote hosts)]
+    WebUI --> |Configure| Config[(config.json<br/>• Schedule enabled<br/>• Frequency<br/>• Prune options<br/>• Notifications<br/>• Remote hosts)]
     WebUI --> |View Stats| StatsUI[Display stats.json<br/>All-time metrics]
     WebUI --> |Manual/Preview| Manual[Manual Trigger]
     API --> |Homepage Widget| StatsUI
     
-    Scheduler --> CheckTime{Scheduled<br/>time?}
+    Scheduler --> CheckSchedule{Schedule<br/>enabled?}
+    CheckSchedule --> |No| Scheduler
+    CheckSchedule --> |Yes| CheckTime{Scheduled<br/>time?}
     CheckTime --> |No| Scheduler
     CheckTime --> |Yes| LoadConfig[Load Config]
     
@@ -70,6 +72,7 @@ flowchart TD
     style Preview fill:#e67e22
     style API fill:#2ecc71
     style Remote fill:#8e44ad
+    style CheckSchedule fill:#c0392b
 ```
 
 ## Component Descriptions
@@ -77,12 +80,21 @@ flowchart TD
 ### Core Components
 
 - **Web UI (Port 8080)**: Flask-based web interface for configuration and manual operations
-- **Scheduler**: APScheduler running every minute to check if prune should execute
-- **API Endpoints**: REST API for external integrations (e.g., Homepage dashboard)
+- **Scheduler**: APScheduler running every minute to check if schedule is enabled and if prune should execute
+  - Can be disabled via "Enable automatic schedule" toggle in UI
+  - Respects configured frequency (daily, weekly, monthly)
+- **API Endpoints**: REST API for external integrations
+  - `/stats` & `/api/stats`: Public endpoints (no auth required) for Homepage widgets and Dashy
+  - Returns all-time statistics and last run information
 
 ### Configuration & State
 
-- **config.json**: Persistent configuration including schedule, prune options, notifications, and remote hosts
+- **config.json**: Persistent configuration including:
+  - `schedule_enabled`: Boolean toggle to enable/disable automatic scheduling
+  - Schedule frequency (daily/weekly/monthly), time, and day settings
+  - Prune options (containers, images, networks, volumes, build cache)
+  - Notification providers and settings
+  - Remote Docker hosts
 - **stats.json**: Cumulative all-time statistics (space reclaimed, resources deleted, timestamps)
 - **prunemate.lock**: File lock to prevent concurrent prune operations
 - **last_run_key**: Tracks last successful scheduled run to prevent duplicates

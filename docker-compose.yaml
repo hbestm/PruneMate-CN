@@ -1,6 +1,6 @@
 services:
   prunemate:
-    build: .  # Build locally instead of using pre-built image
+    image: anoniemerd/prunemate:latest  # Supports amd64 and arm64
     container_name: prunemate
     ports:
       - "7676:8080"

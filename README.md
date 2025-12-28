@@ -8,12 +8,15 @@
 <p align="center"><em>Docker image & resource cleanup helper, on a schedule!</em></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.3.0-purple?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/version-1.3.1-purple?style=for-the-badge"/>
   <img src="https://img.shields.io/badge/python-3.12-yellow?style=for-the-badge&logo=python&logoColor=ffffff"/>
   <img src="https://img.shields.io/badge/docker-compose-0db7ed?style=for-the-badge&logo=docker&logoColor=ffffff"/>
   <img src="https://img.shields.io/badge/license-AGPLv3-orange?style=for-the-badge"/>
   <a href="https://hub.docker.com/r/anoniemerd/prunemate">
     <img src="https://img.shields.io/docker/pulls/anoniemerd/prunemate?style=for-the-badge&logo=docker&logoColor=ffffff&label=docker%20pulls"/>
+  </a>
+  <a href="https://www.buymeacoffee.com/anoniemerd">
+    <img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me a Coffee"/>
   </a>
 </p>
 
@@ -27,7 +30,8 @@ A sleek, lightweight web interface to **automatically clean up Docker resources*
 
 ## ✨ Features
 
-- 🕐 **Flexible scheduling** - Daily, Weekly, or Monthly cleanup runs
+- 🕐 **Flexible scheduling** - Daily, Weekly, or Monthly cleanup runs with optional manual-only mode
+- 🔀 **Schedule control toggle** - Enable/disable automatic scheduling, so PruneMate only runs manually
 - 🔍 **Prune preview** - See exactly what will be deleted before executing manual prune operations
 - 🌍 **Timezone aware** - Configure your local timezone
 - 🕒 **12/24-hour time format** - Choose your preferred time display
@@ -35,12 +39,23 @@ A sleek, lightweight web interface to **automatically clean up Docker resources*
 - 🧹 **Selective cleanup** - Choose what to prune: containers, images, networks, volumes, **build cache**
 - 🏗️ **Build cache cleanup** - Reclaim significant space by pruning Docker builder cache (often 10GB+)
 - 📊 **All-Time Statistics** - Track cumulative space reclaimed and resources deleted across all runs
-- 🏠 **Homepage integration** - Display statistics in your Homepage dashboard
-- 🔔 **Smart notifications** - Gotify, ntfy.sh, Discord, or Telegram support with optional change-only alerts
+- 🏠 **Homepage integration** - Display statistics in your Homepage dashboard (works with authentication enabled)
 - 🎨 **Modern UI** - Dark theme with smooth animations and responsive design
-- �🔒 **Secure authentication** - Optional login protection with password hashing and Basic Auth support
-- �🔒 **Safe & controlled** - Manual trigger with preview and detailed logging
+- 🔒 **Secure authentication** - Optional login protection with password hashing and Basic Auth support
+- 🏗️ **Multi-architecture support** - Native amd64 and arm64 Docker images (Intel/AMD, Raspberry Pi, Apple Silicon)
+- 🔒 **Safe & controlled** - Manual trigger with preview and detailed logging
 - 📈 **Detailed reports** - See exactly what was cleaned and how much space was reclaimed
+
+---
+
+## 📋 What's New in V1.3.1
+
+- 🔀 **Schedule Enable/Disable Toggle** - Run manual cleanups only without scheduled automation
+- 🏗️ **Multi-Architecture Support** - Docker images now support amd64 and arm64 out of the box
+- 🏠 **Fixed Homepage Widget Integration** - Stats endpoints work correctly when authentication is enabled
+- 📦 **Improved Docker Compose** - Pre-built multi-arch image by default, no local builds needed
+
+See [CHANGELOG.md](./CHANGELOG.md) for complete release notes.
 
 ---
 
@@ -98,7 +113,7 @@ A brief interface that shows which Docker resources will be pruned during the ne
 ```yaml
 services:
   prunemate:
-    image: anoniemerd/prunemate:latest
+    image: anoniemerd/prunemate:latest  # Supports amd64 and arm64
     container_name: prunemate
     ports:
       - "7676:8080"
@@ -110,38 +125,6 @@ services:
       - PRUNEMATE_TZ=Europe/Amsterdam # Change this to your desired timezone
       - PRUNEMATE_TIME_24H=true #false for 12-Hour format (AM/PM)
       # Optional: Enable authentication (generate hash with: docker run --rm anoniemerd/prunemate python prunemate.py --gen-hash "password")
-      # - PRUNEMATE_AUTH_USER=admin
-      # - PRUNEMATE_AUTH_PASSWORD_HASH=your_base64_encoded_hash_here
-    restart: unless-stopped
-```
-
-**For ARM64 systems (Apple Silicon, ARM servers, Raspberry Pi):**
-
-If you get "no matching manifest for linux/arm64" error, clone the repository and build locally:
-
-```bash
-# Clone the repository
-git clone https://github.com/anoniemerd/PruneMate.git
-cd PruneMate
-```
-
-Then use this docker-compose.yaml:
-
-```yaml
-services:
-  prunemate:
-    build: .  # Build locally instead of using pre-built image
-    container_name: prunemate
-    ports:
-      - "7676:8080"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./logs:/var/log
-      - ./config:/config
-    environment:
-      - PRUNEMATE_TZ=Europe/Amsterdam # Change this to your desired timezone
-      - PRUNEMATE_TIME_24H=true #false for 12-Hour format (AM/PM)
-            # Optional: Enable authentication (generate hash with: docker run --rm anoniemerd/prunemate python prunemate.py --gen-hash "password")
       # - PRUNEMATE_AUTH_USER=admin
       # - PRUNEMATE_AUTH_PASSWORD_HASH=your_base64_encoded_hash_here
     restart: unless-stopped
@@ -554,7 +537,7 @@ The `/api/stats` endpoint returns the following fields:
 | Problem | Solution |
 |---------|----------|
 | ❌ Can't access web interface | • Check if port 7676 is available and not blocked by firewall<br>• Verify container is running: `docker ps`<br>• Check logs: `docker logs prunemate` |
-| 🏗️ ARM architecture error | • Error: "no matching manifest for linux/arm64"<br>• **Solution:** Clone the repository and change `image: anoniemerd/prunemate:latest` to `build: .` in docker-compose.yaml<br>• This builds the image locally for your ARM64 system<br>• See Quick Start section for ARM64-specific instructions |
+| 🏗️ ARM architecture error | • V1.3.1+: Image now has native multi-architecture support (amd64 + arm64)<br>• Pull `anoniemerd/prunemate:latest` - it will auto-detect your platform<br>• No local build required anymore!<br>• If running older versions, use `build: .` in docker-compose.yaml |
 | ⚙️ Container not starting | • View startup errors: `docker logs prunemate`<br>• Verify Docker socket is accessible<br>• Check if port 7676 is already in use |
 | 🔒 Permission denied errors | • Ensure `/var/run/docker.sock` exists and is accessible<br>• On Linux, Docker daemon must be running<br>• User running Docker must have proper permissions |
 | 🕐 Wrong timezone in logs/schedule | • Set `PRUNEMATE_TZ` environment variable correctly<br>• Restart container after changing: `docker-compose restart`<br>• Verify timezone in logs matches expected |
@@ -607,6 +590,20 @@ Have questions or need help?
 - 💡 **Feature requests:** [Open an issue on GitHub](https://github.com/anoniemerd/PruneMate/issues)
 - 💬 **Questions & Discussion:** [Start a discussion on GitHub](https://github.com/anoniemerd/PruneMate/discussions)
 - ⭐ **Like PruneMate?** Give it a star!
+
+---
+
+## ☕ Support the Project
+
+If you find PruneMate useful and would like to support the development, consider buying me a coffee!
+
+<p align="center">
+  <a href="https://www.buymeacoffee.com/anoniemerd" target="_blank">
+    <img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me a Coffee"/>
+  </a>
+</p>
+
+Your support helps me dedicate more time to maintaining and improving PruneMate! ❤️
 
 ---
 

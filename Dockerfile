@@ -1,3 +1,8 @@
+# syntax=docker/dockerfile:1
+
+# Build stage argument for multi-architecture support
+ARG BUILDPLATFORM
+
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -6,7 +11,6 @@ WORKDIR /app
 COPY prunemate.py /app/prunemate.py
 COPY templates /app/templates
 COPY static /app/static
-
 
 # Install Python dependencies (incl. Docker SDK, Gunicorn, and file-based locking)
 RUN pip install --no-cache-dir Flask APScheduler docker gunicorn filelock

@@ -40,6 +40,7 @@ LAST_RUN_LOCK = Path(str(LAST_RUN_FILE) + ".lock")
 STATS_FILE = Path(os.environ.get("PRUNEMATE_STATS", "/config/stats.json"))
 
 DEFAULT_CONFIG = {
+    "schedule_enabled": True,
     "frequency": "daily",
     "time": "03:00",
     "day_of_week": "mon",
@@ -405,6 +406,7 @@ def effective_config():
     """Return the current effective configuration with relevant fields."""
     freq = config.get("frequency", "daily")
     base = {
+        "schedule_enabled": config.get("schedule_enabled", True),
         "frequency": freq,
         "time": config.get("time"),
         "prune_containers": config.get("prune_containers"),
@@ -1404,6 +1406,10 @@ def check_and_run_scheduled_job():
     # Always reload config to ensure we have the latest schedule across workers
     load_config(silent=True)
     
+    # Check if schedule is enabled
+    if not config.get("schedule_enabled", True):
+        return
+    
     now = datetime.datetime.now(app_timezone)
     freq = config.get("frequency", "daily")
     try:
@@ -1511,8 +1517,8 @@ def require_auth():
     if not is_auth_enabled():
         return
 
-    # Allow static resources and login page
-    if request.endpoint in ('static', 'login', 'logout'):
+    # Allow static resources, login page, and stats endpoints
+    if request.endpoint in ('static', 'login', 'logout', 'stats', 'api_stats'):
         return
 
     # Check if user is logged in via session
@@ -1632,6 +1638,7 @@ def update():
         day_of_month = 1
     day_of_month = max(1, min(31, day_of_month))
 
+    schedule_enabled = "schedule_enabled" in request.form
     prune_containers = "prune_containers" in request.form
     prune_images = "prune_images" in request.form
     prune_networks = "prune_networks" in request.form
@@ -1670,6 +1677,7 @@ def update():
     time_value = validate_time(time_value)
 
     new_values = {
+        "schedule_enabled": schedule_enabled,
         "frequency": frequency,
         "time": time_value,
         "day_of_week": day_of_week,
@@ -1691,7 +1699,7 @@ def update():
     }
 
     schedule_keys = [
-        "frequency","time","day_of_week","day_of_month",
+        "schedule_enabled","frequency","time","day_of_week","day_of_month",
         "prune_containers","prune_images","prune_networks","prune_volumes","prune_build_cache"
     ]
     schedule_changed = any(new_values[k] != old_config.get(k) for k in schedule_keys)

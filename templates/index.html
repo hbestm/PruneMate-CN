@@ -422,6 +422,16 @@
       <!-- Schedule configuration section -->
       <h2>Schedule</h2>
       <div class="card schedule">
+        <!-- Toggle for enabling/disabling the schedule -->
+        <div class="toggle-row">
+          <span class="label-text">Enable automatic schedule</span>
+          <label class="switch">
+            <input type="checkbox" name="schedule_enabled" id="schedule_enabled"
+                   {% if config.get('schedule_enabled', true) %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+        </div>
+
         <div class="row inline">
           <!-- Frequency selector (daily/weekly/monthly) -->
           <div class="field">
@@ -835,7 +845,7 @@
 
     <!-- Application footer -->
     <div class="footer">
-      PruneMate · 2025 · V1.3.0 ·
+      PruneMate · 2025 · V1.3.1 ·
       <a href="https://github.com/anoniemerd/PruneMate" target="_blank">GitHub</a>
     </div>
   </div>
