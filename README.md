@@ -560,23 +560,34 @@ The `/api/stats` endpoint returns the following fields:
 
 ## 📜 Release Notes
 
-### Version 1.2.9 (December 2025)
-- 🏗️ **NEW** Docker build cache pruning - Clean up Docker builder cache (can reclaim 10GB+)
-  - **⚠️ Requires `BUILD=1` in docker-socket-proxy for remote hosts**
-- 💬 **NEW** Discord notification provider - Webhook-based notifications with color-coded priorities
-  - Configure with Webhook URL from Discord server integrations
-  - Priority colors: Low=Green, Medium=Orange, High=Red
-- 📱 **NEW** Telegram notification provider - Full bot notification support
-  - Configure with Bot Token (from @BotFather) and Chat ID
-  - Priority support: Low=silent, Medium/High=normal sound
-- 🎯 **NEW** Text-based priority system - Changed from numeric (1-10) to text (Low/Medium/High)
-  - More intuitive and user-friendly
-  - Default priority changed to "Medium"
-  - Automatic migration from numeric priorities
+## [V1.3.1] - December 2025
 
-### Version 1.2.8 (December 2025)
-- 🔍 **NEW** Prune preview before execution - See exactly what will be deleted before running
-- 🏠 **NEW** Homepage dashboard integration - `/api/stats` endpoint for customapi widget
+### Added
+- 🔀 **Schedule enable/disable toggle** - New UI toggle to control automatic scheduling
+  - "Enable automatic schedule" switch in Schedule section
+  - Allows running manual cleanups only without affecting scheduled runs
+  - Scheduler still heartbeats every minute but skips execution when disabled
+  - Setting persists in config.json and defaults to enabled for existing installations
+- 🏗️ **Multi-architecture Docker image support** - Build once, run anywhere
+  - Native support for amd64 and arm64 architectures
+  - Works seamlessly on Intel/AMD, Raspberry Pi 4/5, Apple Silicon M1/M2/M3, and ARM-based NAS
+  - Docker Buildx multi-platform builds for efficient distribution
+  - No more local builds required for ARM systems
+  - Single docker-compose.yaml works on all architectures
+
+### Fixed
+- 🏠 **Homepage widget integration with authentication** - Stats endpoints now work with auth enabled
+  - `/stats` and `/api/stats` endpoints accessible without authentication
+  - Required for Homepage and Dashy widgets to display statistics when login is enabled
+  - Backward compatible: endpoints contain non-sensitive Docker cleanup statistics only
+- 📊 **Schedule configuration logging** - Added `schedule_enabled` to effective config output
+  - Proper logging of all schedule settings including new toggle
+
+### Changed
+- 📦 **Docker Compose default** - Changed from local build to pre-built multi-arch image
+  - docker-compose.yaml now uses `image: anoniemerd/prunemate:latest` by default
+  - Auto-detects correct architecture (amd64/arm64) at pull time
+  - Significantly faster deployment and smaller initial setup
 
 📖 **[View full changelog](CHANGELOG.md)**
 
