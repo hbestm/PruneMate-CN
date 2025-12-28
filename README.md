@@ -50,14 +50,14 @@ A sleek, lightweight web interface to **automatically clean up Docker resources*
 The overall look and feel of the PruneMate dashboard
 
 <p align="center">
-  <img width="400" height="800" src="https://github.com/user-attachments/assets/14afc2f7-5791-408c-be8c-60f4f9ef18fa" /> 
+  <img width="400" height="800" src="https://github.com/user-attachments/assets/f69df1a9-5a40-47a6-a955-91f6449f1ea2" />
 </p>
 
 ### Authentication page
 The login page, (when enabled in the docker-compose.yaml environment variables)
 
 <p align="center">
-  <img width="400" height="800" src="https://github.com/user-attachments/assets/93612e04-21b4-4ca5-a0a0-1a876489c2fa" /> 
+  <img width="400" height="800" src="https://github.com/user-attachments/assets/29ea359c-452e-4e1d-8567-c8fd65b08d4e" /> 
 </p>
 
 ### External Docker hosts
