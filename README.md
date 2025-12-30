@@ -1,12 +1,11 @@
-
-# PruneMate
+# PruneMate - Docker资源自动清理助手
 
 <p align="center">
   <img width="400" height="400" alt="prunemate-logo" src="https://github.com/user-attachments/assets/0785ea56-88f6-4926-9ae1-de736840c378" />
 </p>
 
 <h1 align="center">PruneMate</h1>
-<p align="center"><em>Docker 镜像与资源清理助手，支持定时任务！</em></p>
+<p align="center"><em>定时自动清理Docker镜像和资源的实用助手</em></p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-1.3.1-purple?style=for-the-badge"/>
@@ -21,102 +20,117 @@
   </a>
 </p>
 
-一个简洁轻量的 Web 界面，用于**按计划自动清理 Docker 资源**。  
-基于 Python（Flask）· Docker SDK · APScheduler · Gunicorn 构建。
+PruneMate 是一个简洁轻量的Web界面工具，帮助你**按计划自动清理Docker资源**。它基于Python（Flask）、Docker SDK、APScheduler和Gunicorn构建。
 
-**通过定时清理未使用的镜像、容器、网络和卷，让你的 Docker 主机保持干净整洁。**
+**通过定时清理未使用的镜像、容器、网络和卷，让你的Docker主机保持整洁高效。**
 
-> ⚠️ **免责声明**：PruneMate 使用 Docker 原生的 `prune` 命令删除未使用资源。  
-> 这意味着它会删除 Docker 判定为“未使用”的容器、镜像、网络和卷——特别要注意卷，因为其中可能包含重要数据。  
-> 在启用自动调度之前，请务必确认你已经理解哪些内容会被清理。作者不对任何数据丢失或系统问题负责。**使用本工具需自担风险。**
+> ⚠️ **免责声明**：PruneMate 使用Docker原生的`prune`命令来删除未使用的资源。这意味着它会移除Docker认为“未使用”的容器、镜像、网络和卷。请注意卷的清理，因为它们可能包含重要数据。在启用自动计划之前，请务必了解将被清理的内容。作者对任何数据丢失或系统问题不承担责任。**风险自负。**
 
-***
+---
 
-## ✨ 功能特性
+## ✨ 主要特性
 
-- 🕐 **灵活调度**：支持每天、每周或每月运行清理任务，亦可设置为仅手动模式  
-- 🔀 **调度开关控制**：可启用/禁用自动调度，让 PruneMate 只在手动触发时运行  
-- 🔍 **清理预览**：在执行手动清理前，先预览将要删除的内容  
-- 🌍 **时区感知**：可配置你的本地时区  
-- 🕒 **12/24 小时制**：自由选择时间显示格式  
-- 🐳 **多主机支持**：在一个界面中管理多台 Docker 主机（远程主机需使用 docker-socket-proxy）  
-- 🧹 **选择性清理**：可选择要清理的资源类型：容器、镜像、网络、卷、**构建缓存**  
-- 🏗️ **构建缓存清理**：通过清理 Docker 构建缓存回收大量空间（通常可达 10GB+）  
-- 📊 **全时统计**：统计所有运行中累计释放的空间和删除的资源数量  
-- 🏠 **Homepage 集成**：在 Homepage 仪表盘中展示统计信息（在启用认证时也能使用）  
-- 🎨 **现代化界面**：暗色主题、平滑动画与响应式设计  
-- 🔒 **安全认证**：可选登录保护，支持密码哈希与 Basic Auth  
-- 🏗️ **多架构支持**：原生支持 amd64 与 arm64 Docker 镜像（Intel/AMD、树莓派、Apple Silicon 等）  
-- 🔒 **安全可控**：手动触发配合预览与详细日志  
-- 📈 **详细报告**：清晰展示具体清理内容以及回收了多少空间  
+- 🕐 **灵活的计划任务** - 支持每日、每周或每月清理，也可以设置为仅手动模式
+- 🔀 **计划开关控制** - 可以启用或禁用自动计划，让PruneMate仅在手动触发时运行
+- 🔍 **清理预览** - 在执行手动清理前，可以查看即将被删除的具体内容
+- 🌍 **时区支持** - 可以配置本地时区
+- 🕒 **12/24小时时间格式** - 选择你偏好的时间显示方式
+- 🐳 **多主机管理** - 从一个界面管理多个Docker主机（需要在远程主机上部署docker-socket-proxy）
+- 🧹 **选择性清理** - 可以选择清理的内容：容器、镜像、网络、卷和**构建缓存**
+- 🏗️ **构建缓存清理** - 通过清理Docker构建缓存 reclaim大量空间（通常可以释放10GB以上）
+- 📊 **历史统计** - 跟踪所有清理操作累计回收的空间和删除的资源数量
+- 🏠 **主页集成** - 在你的Homepage仪表板上显示统计信息（支持登录认证）
+- 🎨 **现代化UI** - 深色主题，带有流畅动画和响应式设计
+- 🔒 **安全认证** - 可选的登录保护，支持密码哈希和Basic Auth
+- 🏗️ **多架构支持** - 原生支持amd64和arm64 Docker镜像（Intel/AMD、树莓派、Apple Silicon）
+- 🔒 **安全可控** - 手动触发时带有预览功能和详细日志
+- 📈 **详细报告** - 清晰展示清理了哪些内容以及回收了多少空间
 
-***
+---
 
-## 📋 V1.3.1 更新内容
+## 📋 V1.3.1 新增功能
 
-- 🔀 **调度启用/禁用开关**：可仅运行手动清理，而不启用定时自动化  
-- 🏗️ **多架构支持**：Docker 镜像现在开箱即用支持 amd64 与 arm64  
-- 🏠 **修复 Homepage 小组件集成**：在启用认证时，统计端点可正常工作  
-- 📦 **改进 Docker Compose 默认配置**：默认使用预构建的多架构镜像，无需本地构建  
+- 🔀 **计划启用/禁用开关** - 新的UI开关控制自动计划
+  - 计划部分新增“启用自动计划”开关
+  - 允许仅运行手动清理而不影响计划任务
+  - 调度器仍会每分钟心跳但在禁用时跳过执行
+  - 设置会保存在config.json中，现有安装默认启用
+- 🏗️ **多架构Docker镜像支持** - 一次构建，随处运行
+  - 原生支持amd64和arm64架构
+  - 无缝运行在Intel/AMD、树莓派4/5、Apple Silicon M1/M2/M3以及基于ARM的NAS上
+  - 使用Docker Buildx多平台构建进行高效分发
+  - ARM系统不再需要本地构建
+  - 单个docker-compose.yaml适用于所有架构
 
-查看完整更新说明请见 [CHANGELOG.md](./CHANGELOG.md)。
+### 修复
+- 🏠 **登录状态下的Homepage小部件集成** - 统计端点现在在登录启用时也可访问
+  - `/stats` 和 `/api/stats` 端点无需认证即可访问
+  - 确保在启用登录时Homepage和Dashy小部件仍能显示统计信息
+  - 向后兼容：端点仅包含非敏感的Docker清理统计数据
 
-***
+### 变更
+- 📦 **Docker Compose默认设置** - 从本地构建改为预构建的多架构镜像
+  - docker-compose.yaml现在默认使用`image: anoniemerd/prunemate:latest`
+  - 在拉取时自动检测正确的架构（amd64/arm64）
+  - 显著加快部署速度和减少初始设置时间
+
+---
 
 ## 📷 截图
 
-### 主控制台  
-PruneMate 控制台的整体界面与外观。
+### 主仪表板
+PruneMate仪表板的整体外观和风格
 
 <p align="center">
   <img width="400" height="800" src="https://github.com/user-attachments/assets/f69df1a9-5a40-47a6-a955-91f6449f1ea2" />
 </p>
 
-### 认证页面  
-登录页面（当在 docker-compose.yaml 的环境变量中启用了认证时显示）。
+### 认证页面
+登录页面（在docker-compose.yaml环境变量中启用时）
 
 <p align="center">
   <img width="400" height="800" src="https://github.com/user-attachments/assets/29ea359c-452e-4e1d-8567-c8fd65b08d4e" /> 
 </p>
 
-### 外部 Docker 主机  
-通过 [docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy) 添加外部 Docker 主机。
+### 外部Docker主机
+通过[docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy)添加外部Docker主机
 
 <p align="center">
   <img width="400" height="400" alt="prunemate-cleanup" src="https://github.com/user-attachments/assets/28abdbe4-bd9e-4272-a6fc-24a4a8dc83bb" />
 </p>
 
-### 通知设置  
-通过 Gotify、ntfy.sh、Discord 或 Telegram 配置通知，以便及时了解清理结果。
+### 通知设置
+配置通过Gotify、ntfy.sh、Discord或Telegram接收清理结果通知
 
 <p align="center">
   <img width="400" height="400" alt="prunemate-notifications" src="https://github.com/user-attachments/assets/73a06c4d-fffa-40eb-a010-239d7d364004" /> 
 </p>
 
-### 清理预览  
-简洁的界面展示在下一次清理任务（手动或定时）中将要被清理的 Docker 资源。
+### 清理预览
+显示下一次清理运行时将被删除的Docker资源的简要界面，无论是手动触发还是计划执行
 
 <p align="center">
   <img width="400" height="400" alt="prunemate-preview" src="https://github.com/user-attachments/assets/34fb445d-8956-46e8-84df-b6718db3f556" /> 
 </p>
 
+
 ---
 
-## 🚀 使用 Docker Compose 快速开始
+## 🚀 使用Docker Compose快速开始
 
 ### 前置条件
 
-- 已安装 Docker 和 Docker Compose  
-- 可以访问 Docker 套接字（`/var/run/docker.sock`）
+- 已安装Docker和Docker Compose
+- 可访问Docker套接字（`/var/run/docker.sock`）
 
 ### 安装步骤
 
-1. **创建 `docker-compose.yaml` 文件：**
+1. **创建`docker-compose.yaml`文件：**
 
 ```yaml
 services:
   prunemate:
-    image: anoniemerd/prunemate:latest  # 支持 amd64 和 arm64
+    image: anoniemerd/prunemate:latest  # 支持amd64和arm64
     container_name: prunemate
     ports:
       - "7676:8080"
@@ -125,33 +139,33 @@ services:
       - ./logs:/var/log
       - ./config:/config
     environment:
-      - PRUNEMATE_TZ=Europe/Amsterdam # 修改为你需要的时区
-      - PRUNEMATE_TIME_24H=true # false 为 12 小时制（AM/PM）
-      # 可选：启用认证（生成哈希命令：docker run --rm anoniemerd/prunemate python prunemate.py --gen-hash "password"）
+      - PRUNEMATE_TZ=Europe/Amsterdam # 更改为你所在的时区
+      - PRUNEMATE_TIME_24H=true # false表示使用12小时格式（AM/PM）
+      # 可选：启用认证（使用以下命令生成哈希：docker run --rm anoniemerd/prunemate python prunemate.py --gen-hash "password")
       # - PRUNEMATE_AUTH_USER=admin
       # - PRUNEMATE_AUTH_PASSWORD_HASH=your_base64_encoded_hash_here
     restart: unless-stopped
 ```
 
-2. **启动 PruneMate：**
+2. **启动PruneMate：**
 
 ```bash
 docker-compose up -d
 ```
 
-3. **访问 PruneMate Web 界面：**
+3. **访问PruneMate的Web界面：**
 
 在浏览器中打开：
 
 ```
-http://<你的服务器 IP>:7676/
+http://<你的服务器IP>:7676/
 ```
 
-***
+---
 
-## 🚀 使用 Docker Run 快速开始
+## 🚀 使用Docker Run快速开始
 
-**使用 Docker CLI：**
+**使用Docker命令行：**
 
 ```bash
 docker run -d \
@@ -166,44 +180,44 @@ docker run -d \
   anoniemerd/prunemate:latest
 ```
 
-**访问 Web 界面：**
+**访问Web界面：**
 
 ```
-http://<你的服务器 IP>:7676/
+http://<你的服务器IP>:7676/
 ```
 
-**挂载卷说明：**
 
-- `/var/run/docker.sock`：用于访问 Docker API（必须挂载）  
-- `./logs`：存储应用日志（滚动日志，单个文件最大约 5MB）  
-- `./config`：存储配置和状态文件  
 
-***
+**卷说明：**
+- `/var/run/docker.sock` - 用于访问Docker API
+- `./logs` - 存储应用日志（自动轮转，每个文件最大5MB）
+- `./config` - 存储配置和状态文件
+
+---
 
 ## ⚙️ 配置
 
 ### 环境变量
 
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `PRUNEMATE_TZ` | `UTC` | 调度使用的时区（例如 `Europe/Amsterdam`、`America/New_York`） |
-| `PRUNEMATE_TIME_24H` | `true` | 时间格式：`true` 为 24 小时制，`false` 为 12 小时制（AM/PM） |
+| 变量 | 默认值 | 描述 |
+|----------|---------|-------------|
+| `PRUNEMATE_TZ` | `UTC` | 计划任务使用的时区（例如：`Europe/Amsterdam`, `Asia/Shanghai`） |
+| `PRUNEMATE_TIME_24H` | `true` | 时间格式：`true`为24小时制，`false`为12小时制（AM/PM） |
 | `PRUNEMATE_CONFIG` | `/config/config.json` | 配置文件路径 |
 | `PRUNEMATE_AUTH_USER` | `admin` | 认证用户名（可选，仅在启用认证时使用） |
-| `PRUNEMATE_AUTH_PASSWORD_HASH` | _(无)_ | Base64 编码的密码哈希（设置后启用认证） |
+| `PRUNEMATE_AUTH_PASSWORD_HASH` | _(无)_ | Base64编码的密码哈希（设置后启用认证） |
 
 ### 🔐 认证（可选）
 
-PruneMate 支持为 Web 界面和 API 端点启用可选密码保护。
+PruneMate 支持对Web界面和API端点进行可选的密码保护。
 
 **主要特性：**
+- 🔒 **基于表单的登录** - 与应用设计风格一致的登录页面
+- 🔑 **安全哈希** - 使用scrypt加密密码（行业标准）
+- 🌐 **API兼容性** - 为外部工具（Homepage、Dashy等）提供Basic Auth支持
+- 🚪 **注销按钮** - 方便的会话管理
 
-- 🔒 **表单登录**：与应用风格一致的登录页面  
-- 🔑 **安全哈希**：密码使用 scrypt 进行哈希（行业标准）  
-- 🌐 **API 兼容**：为外部工具（Homepage、Dashy 等）提供 Basic Auth 兼容模式  
-- 🚪 **注销按钮**：方便的会话管理  
-
-**启用认证的步骤：**
+**启用认证步骤：**
 
 1. **使用内置工具生成密码哈希：**
 
@@ -211,35 +225,32 @@ PruneMate 支持为 Web 界面和 API 端点启用可选密码保护。
 docker run --rm anoniemerd/prunemate:latest python prunemate.py --gen-hash "your_password"
 ```
 
-这会输出一个 Base64 编码的哈希（适用于 YAML，不会产生特殊字符问题）：
-
+此命令会输出Base64编码的哈希（适合YAML格式，无特殊字符）：
 ```
 c2NyeXB0OjMyNzY4Ojg6MSRvcDdnZFlGR1JmRFp4Y1RjJDBmMzNlYzc4NzExZTI4MzllYjk0MWFiOTZkOGUyZGNjNGRhMzU2NTlmMGI1ZDg0NjhjZTdkMThhODhmNmQ3ZGRhOGU4YzdmMDYxMWZiNzAyYjA0ZGNhNTBjZWMxZjFlYzc3ZjhlNzJhYmM0MmQ3OTQ5NDM2MDUzZWRlZjlhZGY0
 ```
 
-> **为什么使用 Base64？**  
-> 原始 scrypt 哈希中包含 `$` 字符，而 Docker Compose 会把 `$` 解析为环境变量，从而破坏哈希。  
-> 使用 Base64 编码后得到的字符串只包含字母和数字，YAML 可以安全处理，无需转义。
+> **为什么使用Base64？** 原始的scrypt哈希包含`$`字符，Docker Compose会将其解释为环境变量，导致哈希损坏。Base64编码生成的字母数字字符串可以被YAML安全处理，无需转义。
 
-> **✅ 建议使用的特殊字符（在密码中）：**  
-> - 井号：`#`  
-> - at 符号：`@`  
-> - 百分号：`%`  
-> - 星号：`*`  
-> - 和号：`&`  
-> - 插入号：`^`  
+> **✅ 适合使用的特殊字符：**
+> - 井号：`#`
+> - at符号：`@` 
+> - 百分号：`%`
+> - 星号：`*`
+> - 和号：`&`
+> - 脱字符：`^`
 >
-> **⚠️ 建议避免的字符：**  
-> - 感叹号：`!`（可能触发 shell 历史记录扩展）  
-> - 美元符：`$`（变量展开——即便 Base64 后，在某些场景仍可能有问题）  
+> **⚠️ 需要避免的字符：**
+> - 感叹号：`!`（bash历史扩展）
+> - 美元符号：`$`（变量扩展 - 即使Base64编码后，在某些情况下仍可能导致问题）
 >
-> **安全示例：**  
-> - `MyPassword#123`  
-> - `Test@secure%pass`  
-> - `prunemate&admin^2024`  
-> - `MyPass*Admin#99`  
+> **安全示例：**
+> - `MyPassword#123`
+> - `Test@secure%pass`
+> - `prunemate&admin^2024`
+> - `MyPass*Admin#99`
 
-2. **将结果写入 docker-compose.yaml：**
+2. **添加到docker-compose.yaml：**
 
 ```yaml
 environment:
@@ -253,193 +264,180 @@ environment:
 docker-compose up -d
 ```
 
-**重要说明：**
+**重要注意事项：**
+- 认证是**可选的** - 仅当设置了`PRUNEMATE_AUTH_PASSWORD_HASH`时才启用
+- 不设置哈希变量时，应用以开放模式运行（向后兼容）
+- 对于API客户端（Homepage等），使用实际密码而非哈希进行Basic Auth认证
+- 哈希使用Base64编码以防止Docker Compose将`$`字符解释为变量
 
-- 认证为**可选**，仅在设置了 `PRUNEMATE_AUTH_PASSWORD_HASH` 时启用  
-- 未设置该变量时，应用以开放模式运行（向下兼容）  
-- 对于 API 客户端（如 Homepage），使用 Basic Auth 时需填写**明文密码**（而不是哈希）  
-- 哈希采用 Base64 编码，避免 Docker Compose 将 `$` 解析为变量  
 
-### Web 界面设置
+### Web界面设置
 
-通过 `http://localhost:7676/`（或你的服务器 IP）访问 Web 界面进行配置：
+访问Web界面`http://localhost:7676/`（或你的服务器IP）进行配置：
 
-**调度设置：**
-
-- **频率**：每天、每周或每月  
-- **时间**：清理任务执行时间（支持 12/24 小时制）  
-- **日期**：每周的星期几（用于每周），或每月的几号（用于每月）  
+**计划设置：**
+- **频率**：每日、每周或每月
+- **时间**：清理任务的执行时间（支持12h和24h格式）
+- **日期**：每周的星期几或每月的几号
 
 **清理选项：**
-
-- ☑️ 所有未使用的容器  
+- ☑️ 所有未使用的容器
 - ☑️ 所有未使用的镜像  
-- ☑️ 所有未使用的网络  
-- ☑️ 所有未使用的卷  
+- ☑️ 所有未使用的网络
+- ☑️ 所有未使用的卷
 
 **通知设置：**
+- **提供商**：Gotify、ntfy.sh、Discord或Telegram
+- **配置**：提供商特定的凭据（Gotify的URL/Token，ntfy的URL/Topic，Discord的Webhook URL，Telegram的Bot Token/Chat ID）
+- **优先级**：低（静默）、中、高优先级通知（取决于提供商）
+- **仅在发生变化时通知**：仅在实际清理了资源时发送通知
 
-- **服务提供方**：Gotify、ntfy.sh、Discord 或 Telegram  
-- **配置项**：不同服务对应的凭据（Gotify 的 URL/Token，ntfy 的 URL/Topic，Discord 的 Webhook URL，Telegram 的 Bot Token/Chat ID）  
-- **优先级**：低（静默）、中或高优先级通知（取决于提供方支持）  
-- **仅在有变化时通知**：只在实际清理了内容时发送通知  
-
-***
+---
 
 ## 🧠 工作原理
 
-1. **调度器**每分钟检查一次是否到了执行时间  
-2. **从持久化存储加载最新配置**  
-3. **根据所选资源类型执行 Docker prune 命令**  
-4. **统计删除了什么以及释放的空间**  
-5. **更新全时统计**（累计空间、数量和时间戳）  
-6. **发送通知**（如果已配置并启用）  
-7. **记录日志**（使用带时区的时间戳）  
+1. **调度器每分钟运行一次**，检查是否到了执行时间
+2. **加载最新配置**，从持久存储中读取
+3. **执行Docker prune命令**，针对选定的资源类型
+4. **收集统计数据**，记录删除的内容和回收的空间
+5. **更新历史统计**，累积数据（空间、数量、时间戳）
+6. **发送通知**（如果配置并启用）
+7. **记录所有操作**，包含时区感知的时间戳
 
-📊 **查看详细架构与流程图：** [ARCHITECTURE.md](ARCHITECTURE.md)
+📊 **[查看详细架构和流程图](ARCHITECTURE.md)**
 
 ### 文件结构
 
-```text
+```
 /config/
-├── config.json          # 配置（持久化）
-├── stats.json           # 全时统计（累计数据）
+├── config.json          # 配置文件（持久存储）
+├── stats.json           # 历史统计数据（累积数据）
 ├── prunemate.lock       # 防止并发运行
-└── last_run_key         # 记录最近一次成功运行
+└── last_run_key         # 跟踪上次成功运行
 
 /var/log/
-└── prunemate.log        # 应用日志（滚动日志，单文件最大约 5MB）
+└── prunemate.log        # 应用日志（自动轮转，最大5MB）
 ```
 
-### 全时统计
+### 历史统计
 
-PruneMate 会对所有清理任务进行累积统计：
+PruneMate 跟踪所有清理操作的累积统计数据：
 
 **统计指标：**
-
-- 💾 **总计释放空间**：累计释放的磁盘空间（界面中以 MB/GB/TB 显示）  
-- 📦 **已删除容器数**：删除的未使用容器总数  
-- 🖼️ **已删除镜像数**：删除的未使用镜像总数  
-- 🔗 **已删除网络数**：删除的未使用网络总数  
-- 💿 **已删除卷数**：删除的未使用卷总数  
-- 🔄 **清理运行次数**：执行 prune 的总次数  
-- 📅 **首次运行时间**：第一次执行清理的时间戳  
-- 🕐 **最近运行时间**：最近一次执行清理的时间戳  
+- 💾 **总回收空间** - 累积释放的磁盘空间（以MB/GB/TB显示）
+- 📦 **已删除容器** - 累计删除的未使用容器数量
+- 🖼️ **已删除镜像** - 累计删除的未使用镜像数量
+- 🔗 **已删除网络** - 累计删除的未使用网络数量
+- 💿 **已删除卷** - 累计删除的未使用卷数量
+- 🔄 **总清理次数** - 执行清理的总次数
+- 📅 **首次运行** - 第一次清理执行的时间戳
+- 🕐 **上次运行** - 最近一次清理执行的时间戳
 
 **技术细节：**
+- 统计数据持久保存在`/config/stats.json`中，使用文件锁定实现原子写入
+- 每次清理后更新，无论是否删除了资源
+- 时间戳是时区感知的，遵循`PRUNEMATE_TZ`设置
+- UI中显示的日期和时间遵循配置的12h/24h格式
+- 统计数据在容器重启和更新后保持
+- 手动清理后UI自动刷新
 
-- 统计数据存储在 `/config/stats.json` 中，并通过文件锁进行原子写入  
-- 每次清理任务结束后都会更新统计数据，无论是否实际删除了资源  
-- 时间戳是带时区的，并遵循 `PRUNEMATE_TZ` 设置  
-- 界面中的日期时间显示遵循配置的 12/24 小时制  
-- 统计数据在容器重启和更新后仍会保留  
-- 在 Web 界面手动执行清理后，统计信息会自动刷新  
+---
 
-***
-
-## 🔔 通知配置
+## 🔔 通知设置
 
 ### Gotify
 
 [Gotify](https://gotify.net/) 是一个自托管的通知服务。
 
-**配置步骤：**
-
-1. 安装并运行 Gotify 服务器  
-2. 在 Gotify 中创建一个新应用  
-3. 复制该应用的 Token  
-4. 在 PruneMate 中进行配置：  
-   - **Provider（服务）**：Gotify  
-   - **URL**：`https://your-gotify-server.com`  
-   - **Token**：你的应用 Token  
+**设置步骤：**
+1. 安装并运行Gotify服务器
+2. 在Gotify中创建一个新应用
+3. 复制应用令牌
+4. 在PruneMate中配置：
+   - **提供商**：Gotify
+   - **URL**：`https://your-gotify-server.com`
+   - **Token**：你的应用令牌
 
 ### ntfy.sh
 
-[ntfy.sh](https://ntfy.sh) 是一个简单的发布/订阅通知服务（支持自托管或公共实例）。
+[ntfy.sh](https://ntfy.sh/) 是一个简单的发布-订阅通知服务（可自托管或使用公共服务）。
 
-**配置步骤：**
+**设置步骤：**
+1. 选择一个独特的主题名称（例如：`prunemate-alerts`）
+2. 在PruneMate中配置：
+   - **提供商**：ntfy
+   - **URL**：`https://ntfy.sh`（或你的自托管实例，支持`username:password@host`格式）
+   - **Topic**：你选择的主题名称
+   - **Token**：（可选）Bearer令牌用于认证
 
-1. 选择一个唯一的主题名称（例如 `prunemate-alerts`）  
-2. 在 PruneMate 中进行配置：  
-   - **Provider（服务）**：ntfy  
-   - **URL**：`https://ntfy.sh`（或你的自托管实例，支持 `username:password@host` 格式）  
-   - **Topic**：你选择的主题名称  
-   - **Token**：（可选）用于认证的 Bearer Token  
-
-**认证方式：**
-
-- **Bearer Token**：推荐用于 API 访问令牌（安全性更高）  
-- **URL 凭据**：使用 `https://username:password@ntfy.example.com` 格式（符合 RFC 3986）  
-- **无认证**：可用于公开主题  
+**认证选项：**
+- **Bearer令牌**：推荐用于API访问令牌（优先级更高）
+- **URL凭据**：使用`https://username:password@ntfy.example.com`格式（符合RFC 3986标准）
+- **无认证**：适用于公共主题
 
 **订阅通知：**
-
-- **Web**：访问 `https://ntfy.sh/your-topic`  
-- **移动端**：安装 ntfy App（[Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy) / [iOS](https://apps.apple.com/app/ntfy/id1625396347)），订阅你的主题  
-- **桌面端**：使用 ntfy 桌面应用或浏览器订阅  
+- **Web**：访问`https://ntfy.sh/your-topic`
+- **移动**：安装ntfy应用（[Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy) / [iOS](https://apps.apple.com/app/ntfy/id1625396347)）并订阅主题
+- **桌面**：使用ntfy桌面应用或浏览器
 
 ### Discord
 
-[Discord](https://discord.com/) Webhook 可以直接向你的 Discord 服务器发送通知。
+[Discord](https://discord.com/) Webhook 允许直接将通知发送到你的Discord服务器。
 
-**配置步骤：**
-
-1. 打开 Discord 服务器设置  
-2. 进入 **Integrations（集成）** → **Webhooks**  
-3. 点击 **New Webhook** 或编辑已有 Webhook  
-4. 复制 **Webhook URL**  
-5. 在 PruneMate 中进行配置：  
-   - **Provider（服务）**：Discord  
-   - **Webhook URL**：`https://discord.com/api/webhooks/...`  
+**设置步骤：**
+1. 打开Discord服务器设置
+2. 进入**集成** → **Webhook**
+3. 点击**新建Webhook**或编辑现有Webhook
+4. 复制**Webhook URL**
+5. 在PruneMate中配置：
+   - **提供商**：Discord
+   - **Webhook URL**：`https://discord.com/api/webhooks/...`
 
 **优先级颜色：**
-
-- **低**：绿色（信息）  
-- **中**：橙色（警告）  
-- **高**：红色（严重）  
+- **低**：绿色（信息性）
+- **中**：橙色（警告）
+- **高**：红色（严重）
 
 ### Telegram
 
-[Telegram Bot API](https://core.telegram.org/bots) 可通过机器人发送 Telegram 通知。
+[Telegram Bot API](https://core.telegram.org/bots) 允许通过Telegram机器人发送通知。
 
-**配置步骤：**
-
-1. 打开 Telegram，搜索 **@BotFather**  
-2. 发送 `/newbot` 并按提示创建新 Bot  
-3. 给 Bot 取一个名字（例如 “PruneMate Notifications”）  
-4. 给 Bot 取一个以 `bot` 结尾的用户名（例如 `prunemate_notif_bot`）  
-5. 复制 **Bot Token**（格式类似 `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`）  
-6. 获取你的 **Chat ID**：  
-   - **简便方法**：给 **@userinfobot** 或 **@getmyid_bot** 发送消息，获取 Chat ID  
-   - **另一种方法**：给你的 Bot 发消息，然后访问 `https://api.telegram.org/bot<BOT_TOKEN>/getUpdates`，在返回 JSON 中找到 `"chat":{"id":123456789}`  
-7. 在 PruneMate 中进行配置：  
-   - **Provider（服务）**：Telegram  
-   - **Bot Token**：从 BotFather 获取的 Token  
-   - **Chat ID**：你的数值 Chat ID（或频道用户名 `@channelname`）  
+**设置步骤：**
+1. 打开Telegram，搜索**@BotFather**
+2. 发送`/newbot`并按照提示操作
+3. 为你的机器人命名（例如："PruneMate Notifications"）
+4. 为你的机器人设置一个以"bot"结尾的用户名（例如："prunemate_notif_bot"）
+5. 复制**Bot Token**（格式：`123456789:ABCdefGHIjklMNOpqrsTUVwxyz`）
+6. 获取**Chat ID**：
+   - **简单方法**：发送消息给**@userinfobot**或**@getmyid_bot**获取Chat ID
+   - **替代方法**：发送消息给你的机器人，然后访问`https://api.telegram.org/bot<BOT_TOKEN>/getUpdates`找到`"chat":{"id":123456789}`
+7. 在PruneMate中配置：
+   - **提供商**：Telegram
+   - **Bot Token**：从BotFather获取的机器人令牌
+   - **Chat ID**：你的数字聊天ID（或`@channelname`用于频道）
 
 **优先级行为：**
+- **低**：静默通知（无声音）
+- **中/高**：正常通知（带声音）
 
-- **低**：静默通知（无声音）  
-- **中/高**：正常通知（带声音）  
+**高级用法：**
+- **群组**：将机器人添加到群组，获取群组Chat ID（以`-`开头）
+- **频道**：使用频道用户名加`@`（例如：`@mychannel`）或数字ID
 
-**进阶用法：**
+---
 
-- **群组**：把 Bot 拉进群组，使用群组的 Chat ID（通常以 `-` 开头）  
-- **频道**：使用频道用户名（带 `@`，如 `@mychannel`）或频道的数值 ID  
-
-***
 
 ## 🌐 多主机设置（可选）
 
-PruneMate 可以从一个界面管理多台 Docker 主机。每次清理会在所有启用的主机上执行，并聚合结果。
+PruneMate 可以从单个界面管理多个Docker主机。每次清理操作会在所有启用的主机上运行，并汇总结果。
 
-### 安全第一：使用 Docker Socket Proxy
+### 安全第一：使用Docker Socket Proxy
 
-⚠️ **切勿直接暴露 Docker 套接字！** 请务必使用 [docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy) 限制 API 访问。
+⚠️ **永远不要直接暴露Docker套接字！** 请始终使用[docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy)限制API访问。
 
-### 快速配置
+### 快速设置
 
-**1. 在每台远程主机上部署代理：**
+**1. 在每个远程主机上部署代理：**
 
 ```yaml
 services:
@@ -450,8 +448,8 @@ services:
       - IMAGES=1
       - NETWORKS=1
       - VOLUMES=1
-      - BUILD=1         # 开启构建缓存清理所必需
-      - POST=1          # 允许执行 prune 等写操作
+      - BUILD=1         # 清理构建缓存必需
+      - POST=1          # 清理操作必需
     ports:
       - "2375:2375"
     volumes:
@@ -459,81 +457,79 @@ services:
     restart: unless-stopped
 ```
 
-> **⚠️ 重要：** `BUILD=1` 环境变量是启用 Docker 构建缓存清理所**必须**的。  
-> 否则，构建缓存清理操作会因 403 错误而失败。
+> **⚠️ 重要**：`BUILD=1`环境变量**必须设置**才能启用Docker构建缓存清理。否则，构建缓存清理操作将因403错误失败。
 
-**2. 在 PruneMate 界面中添加主机：**
-
-- 打开 **Docker Hosts** 页面  
-- 点击 **Add New Host（添加新主机）**  
-- 输入名称（如 “NAS”）和 URL（如 `tcp://192.168.1.50:2375`）  
-- 根据需要切换每台主机的启用/禁用状态  
+**2. 在PruneMate UI中添加主机：**
+- 导航到**Docker Hosts**部分
+- 点击**Add New Host**
+- 输入名称（例如："NAS"）和URL（例如：`tcp://192.168.1.50:2375`）
+- 切换主机的启用/禁用状态
 
 **3. 测试连接：**
+点击**Run now**并检查日志是否成功连接到所有主机。
 
-点击 **Run now（立即运行）**，并在日志中检查是否成功连接到所有主机。
 
-### 故障排查
+### 故障排除
 
-- **Connection refused（连接被拒绝）**：检查代理容器是否在运行 (`docker ps`)，以及 2375 端口是否可访问  
-- **Permission denied（权限拒绝）**：确认代理环境变量中设置了 `POST=1`  
-- **Host skipped（主机被跳过）**：检查 URL 格式是否以 `tcp://`、`http://` 或 `https://` 开头  
+- **连接拒绝**：验证代理是否正在运行（`docker ps`）并且2375端口可访问
+- **权限拒绝**：确保代理设置了`POST=1`环境变量
+- **主机被跳过**：检查URL格式是否以`tcp://`、`http://`或`https://`开头
 
-***
+---
 
-## 🏠 Homepage 仪表盘集成
+## 🏠 Homepage仪表板集成
 
-PruneMate 在 `/api/stats` 提供了自定义 API 端点，以 Homepage 的自定义小组件格式返回全时统计数据。[3][4]
+PruneMate 在`/api/stats`提供了一个自定义API端点，返回历史统计数据，格式兼容[Homepage](https://gethomepage.dev/)仪表板小部件。
 
 <p align="center">
   <img width="400" height="400" alt="prunemate-homepage" src="https://github.com/user-attachments/assets/942169f6-bc16-4cef-8b46-3ac012fe7fec" /> 
 </p>
 
-### 配置步骤
+### 设置
 
-在 Homepage 的 `services.yaml` 中添加如下配置：
+将以下配置添加到你的Homepage `services.yaml`：
 
 ```yaml
 - PruneMate:
     href: http://<your-server-ip>:7676
-    description: Docker Cleanup Automation
+    description: Docker自动清理工具
     icon: https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/prunemate.webp
     widget:
       type: customapi
       url: http://<your-server-ip>:7676/api/stats
       mappings:
         - field: pruneRuns
-          label: Prune Runs
+          label: 清理次数
           format: number
         - field: lastRunText
-          label: Last Run
+          label: 上次运行
         - field: imagesDeleted
-          label: Images Pruned
+          label: 已清理镜像
           format: number
         - field: spaceReclaimedHuman
-          label: Space Saved
+          label: 已节省空间
 ```
 
 ### 可用字段
 
-`/api/stats` 端点会返回如下字段：
+`/api/stats`端点返回以下字段：
 
-| 字段 | 类型 | 描述 | Homepage 格式 |
-|------|------|------|----------------|
-| `pruneRuns` | number | 执行 prune 的总次数 | `number` |
-| `containersDeleted` | number | 删除的容器总数 | `number` |
-| `imagesDeleted` | number | 删除的镜像总数 | `number` |
-| `networksDeleted` | number | 删除的网络总数 | `number` |
-| `volumesDeleted` | number | 删除的卷总数 | `number` |
-| `buildCacheDeleted` | number | 删除的构建缓存条目总数 | `number` |
-| `spaceReclaimed` | number | 累计释放空间（字节数） | `number` |
-| `spaceReclaimedHuman` | string | 人类可读的空间大小（例如 `"2.5 GB"`） | `text` |
-| `lastRunText` | string | 相对时间文本（例如 `"2h ago"`） | `text` |
-| `lastRunTimestamp` | number | 最近一次运行的 Unix 时间戳（秒） | `number` |
-| `lastRun` | string | 最近一次清理的 ISO 时间戳 | `date` |
-| `firstRun` | string | 第一次清理的 ISO 时间戳 | `date` |
+| 字段 | 类型 | 描述 | Homepage格式 |
+|-------|------|-------------|-----------------|
+| `pruneRuns` | number | 执行清理的总次数 | `number` |
+| `containersDeleted` | number | 累计删除的容器总数 | `number` |
+| `imagesDeleted` | number | 累计删除的镜像总数 | `number` |
+| `networksDeleted` | number | 累计删除的网络总数 | `number` |
+| `volumesDeleted` | number | 累计删除的卷总数 | `number` |
+| `buildCacheDeleted` | number | 累计删除的构建缓存条目数 | `number` |
+| `spaceReclaimed` | number | 累计回收的空间（字节） | `number` |
+| `spaceReclaimedHuman` | string | 人类可读的回收空间（例如："2.5 GB"） | `text` |
+| `lastRunText` | string | 相对时间文本（例如："2小时前"） | `text` |
+| `lastRunTimestamp` | number | 上次运行的Unix时间戳（秒） | `number` |
+| `lastRun` | string | 最近一次清理的ISO时间戳 | `date` |
+| `firstRun` | string | 第一次清理的ISO时间戳 | `date` |
 
-### `/api/stats` 示例输出
+### 示例 /api/stats 输出
 
 ```json
 {
@@ -545,98 +541,89 @@ PruneMate 在 `/api/stats` 提供了自定义 API 端点，以 Homepage 的自�
   "buildCacheDeleted": 715,
   "spaceReclaimed": 5368709120,
   "spaceReclaimedHuman": "5.00 GB",
-  "lastRunText": "2h ago",
+  "lastRunText": "2小时前",
   "lastRunTimestamp": 1733454000,
   "lastRun": "2025-12-06T03:00:00+01:00",
   "firstRun": "2025-01-15T03:00:00+01:00"
 }
 ```
+---
 
-***
-
-## 🧠 故障排查
+## 🧠 故障排除
 
 | 问题 | 解决方案 |
-|------|----------|
-| ❌ 无法访问 Web 界面 | -  检查 7676 端口是否被占用或被防火墙阻止<br>-  确认容器正在运行：`docker ps`<br>-  查看日志：`docker logs prunemate` |
-| 🏗️ ARM 架构错误 | -  从 V1.3.1 开始：镜像已原生支持多架构（amd64 + arm64）<br>-  直接拉取 `anoniemerd/prunemate:latest`，会自动选择适合你的平台<br>-  不再需要在 ARM 设备上本地构建<br>-  如使用旧版本，可在 docker-compose.yaml 中使用 `build: .` |
-| ⚙️ 容器无法启动 | -  使用 `docker logs prunemate` 查看启动错误<br>-  确认 Docker 套接字可访问<br>-  检查 7676 端口是否已被其他程序占用 |
-| 🔒 权限不足错误 | -  确认 `/var/run/docker.sock` 存在且可访问<br>-  在 Linux 上确保 Docker 守护进程正在运行<br>-  运行 Docker 的用户需要拥有相应权限 |
-| 🕐 日志/调度时间不正确 | -  正确设置 `PRUNEMATE_TZ` 环境变量<br>-  修改后重启容器：`docker-compose restart`<br>-  检查日志中的时间是否符合预期 |
-| 📧 通知不工作 | -  在 Web 界面测试通知设置<br>-  确认通知服务器 URL 可访问<br>-  检查 Token/Topic 是否正确<br>-  在日志中查看错误消息 |
-| 🗂️ 配置无法持久化 | -  确认已正确挂载 `./config` 卷<br>-  检查宿主机上 `./config` 目录的文件权限<br>-  确保容器对该目录有写入权限 |
-| 🧹 清理任务未按计划运行 | -  检查 Web 界面中的调度配置<br>-  确认时区设置正确<br>-  查看日志中的 “Next scheduled run” 信息<br>-  确保容器持续运行 |
+|---------|----------|
+| ❌ 无法访问Web界面 | • 检查7676端口是否可用且未被防火墙阻止<br>• 验证容器是否正在运行：`docker ps`<br>• 查看日志：`docker logs prunemate` |
+| 🏗️ ARM架构错误 | • V1.3.1及以上版本：镜像原生支持多架构（amd64 + arm64）<br>• 拉取`anoniemerd/prunemate:latest` - 会自动检测你的平台<br>• 无需本地构建！<br>• 如果使用旧版本，在docker-compose.yaml中使用`build: .` |
+| ⚙️ 容器无法启动 | • 查看启动错误：`docker logs prunemate`<br>• 验证Docker套接字是否可访问<br>• 检查7676端口是否已被占用 |
+| 🔒 权限拒绝错误 | • 确保`/var/run/docker.sock`存在且可访问<br>• 在Linux系统上，Docker守护进程必须正在运行<br>• 运行Docker的用户必须有适当的权限 |
+| 🕐 日志/计划中的时区错误 | • 正确设置`PRUNEMATE_TZ`环境变量<br>• 修改后重启容器：`docker-compose restart`<br>• 验证日志中的时区是否符合预期 |
+| 📧 通知无法发送 | • 在Web界面中测试通知设置<br>• 验证通知服务器URL是否可访问<br>• 检查令牌/主题是否正确<br>• 查看日志中的错误信息 |
+| 🗂️ 配置不持久化 | • 确保`./config`卷已正确挂载<br>• 检查主机`./config`目录的文件权限<br>• 验证容器是否有写入权限 |
+| 🧹 计划清理未执行 | • 检查Web界面中的计划配置<br>• 验证时区设置正确<br>• 查看日志：“Next scheduled run”消息<br>• 确保容器持续运行 |
 
-***
+---
 
 ### 日志
 
 **日志包含内容：**
+- ✅ 调度器心跳（每分钟）
+- 📝 配置变更
+- 🧹 清理任务执行及结果
+- 📨 通知发送状态
+- ❌ 错误消息和警告
 
-- ✅ 调度器心跳（每分钟一次）  
-- 📝 配置变更  
-- 🧹 清理任务执行及结果  
-- 📨 通知发送状态  
-- ❌ 错误和警告信息  
+---
 
-***
+## 📜 版本更新日志
 
-## 📜 发布说明
+### [V1.3.1] - 2025年12月
 
-## [V1.3.1] - 2025 年 12 月
+#### 新增
+- 🔀 **计划启用/禁用开关** - 新增UI开关控制自动计划
+  - 计划部分添加“启用自动计划”开关
+  - 允许仅运行手动清理而不影响计划任务
+  - 调度器仍每分钟心跳但禁用时跳过执行
+  - 设置保存在config.json中，现有安装默认启用
+- 🏗️ **多架构Docker镜像支持** - 一次构建，随处运行
+  - 原生支持amd64和arm64架构
+  - 无缝运行在Intel/AMD、树莓派4/5、Apple Silicon M1/M2/M3以及基于ARM的NAS上
+  - 使用Docker Buildx多平台构建进行高效分发
+  - ARM系统不再需要本地构建
+  - 单个docker-compose.yaml适用于所有架构
 
-### 新增
+#### 修复
+- 🏠 **登录状态下的Homepage小部件集成** - 统计端点现在在登录启用时也可访问
+  - `/stats` 和 `/api/stats` 端点无需认证即可访问
+  - 确保在启用登录时Homepage和Dashy小部件仍能显示统计信息
+  - 向后兼容：端点仅包含非敏感的Docker清理统计数据
+- 📊 **计划配置日志** - 在有效配置输出中添加`schedule_enabled`
+  - 正确记录包括新开关在内的所有计划设置
 
-- 🔀 **调度启用/禁用开关**：  
-  - 在“调度”区域新增 “Enable automatic schedule（启用自动调度）” 开关  
-  - 允许仅运行手动清理，而不影响定时任务设置  
-  - 调度器仍每分钟心跳检查，但在关闭时跳过执行  
-  - 设置会持久化保存到 `config.json`，对已有安装默认保持启用  
+#### 变更
+- 📦 **Docker Compose默认设置** - 从本地构建改为预构建的多架构镜像
+  - docker-compose.yaml现在默认使用`image: anoniemerd/prunemate:latest`
+  - 在拉取时自动检测正确的架构（amd64/arm64）
+  - 显著加快部署速度和减少初始设置时间
 
-- 🏗️ **多架构 Docker 镜像支持**：一次构建，多处运行  
-  - 原生支持 amd64 与 arm64 架构  
-  - 可无缝运行在 Intel/AMD、树莓派 4/5、Apple Silicon M1/M2/M3 和 ARM NAS 上  
-  - 使用 Docker Buildx 进行多平台构建，便于分发  
-  - ARM 系统不再需要本地构建  
-  - 一份 docker-compose.yaml 即可在所有架构上工作  
+📖 **[查看完整更新日志](CHANGELOG.md)**
 
-### 修复
+---
 
-- 🏠 **带认证的 Homepage 小组件集成**：  
-  - 在启用登录保护时，`/stats` 和 `/api/stats` 端点现在可正常访问  
-  - 用于 Homepage 与 Dashy 显示统计信息  
-  - 向下兼容：这些端点仅包含非敏感的 Docker 清理统计信息  
+## 📬 支持
 
-- 📊 **调度配置日志**：  
-  - 在有效配置日志输出中新增 `schedule_enabled` 字段  
-  - 日志中会完整显示所有调度相关设置，包括新加的开关  
+有问题需要帮助？
 
-### 变更
+- 🐛 **Bug报告：** [在GitHub上提交Issue](https://github.com/anoniemerd/PruneMate/issues)
+- 💡 **功能请求：** [在GitHub上提交Issue](https://github.com/anoniemerd/PruneMate/issues)
+- 💬 **问题与讨论：** [在GitHub上发起讨论](https://github.com/anoniemerd/PruneMate/discussions)
+- ⭐ **喜欢PruneMate？** 给它一个星标！
 
-- 📦 **Docker Compose 默认配置**：  
-  - 从本地构建改为使用预构建的多架构镜像  
-  - `docker-compose.yaml` 现在默认使用 `image: anoniemerd/prunemate:latest`  
-  - 拉取时自动选择正确的架构（amd64/arm64）  
-  - 加快部署速度，降低初始配置复杂度  
+---
 
-📖 **完整变更历史请见：** [CHANGELOG.md](CHANGELOG.md)
+## ☕ 支持项目
 
-***
-
-## 📬 支持与交流
-
-如果有问题或需要帮助：
-
-- 🐛 **Bug 反馈**：在 GitHub 上 [提交 issue](https://github.com/anoniemerd/PruneMate/issues)  
-- 💡 **功能建议**：在 GitHub 上 [提交 issue](https://github.com/anoniemerd/PruneMate/issues)  
-- 💬 **问题与讨论**：在 GitHub 上 [发起讨论](https://github.com/anoniemerd/PruneMate/discussions)  
-- ⭐ **喜欢 PruneMate？** 欢迎点个 Star！  
-
-***
-
-## ☕ 支持这个项目
-
-如果你觉得 PruneMate 对你有帮助，并希望支持后续开发，可以请作者喝杯咖啡！
+如果你觉得PruneMate很有用，并希望支持项目的开发，欢迎请我买杯咖啡！
 
 <p align="center">
   <a href="https://www.buymeacoffee.com/anoniemerd" target="_blank">
@@ -644,67 +631,63 @@ PruneMate 在 `/api/stats` 提供了自定义 API 端点，以 Homepage 的自�
   </a>
 </p>
 
-你的支持能帮助作者投入更多时间来维护和改进 PruneMate！❤️
+你的支持帮助我投入更多时间维护和改进PruneMate！ ❤️
 
-***
+---
 
-## 👤 作者与许可证
+## 👤 作者与许可
 
 **作者：** Anoniemerd  
 🐙 GitHub：<https://github.com/anoniemerd>  
 📦 仓库：<https://github.com/anoniemerd/PruneMate>
 
-***
+---
 
 ## 👥 贡献者
 
-感谢所有让 PruneMate 变得更好的贡献者！
+感谢所有为PruneMate做出贡献的开发者！
 
 ### 贡献者
-
-- **[@difagume](https://github.com/difagume)** —— 🔐 实现认证系统（V1.3.0）  
-- **[@shollyethan](https://github.com/shollyethan)** —— 🎨 标志（Logo）重设计，并将 Logo 添加到 Self-Hosted Dashboard Icons  
+- **[@difagume](https://github.com/difagume)** - 🔐 认证系统实现（V1.3.0）
+- **[@shollyethan](https://github.com/shollyethan)** - 🎨 Logo重新设计，并添加到Self-Hosted Dashboard Icons
 
 ### 项目维护者/所有者
+- **[anoniemerd](https://github.com/anoniemerd)** - 项目创建者和维护者
 
-- **[anoniemerd](https://github.com/anoniemerd)** —— 项目创建者与维护者  
 
 ---
 
-### 📜 许可证 — AGPLv3
+### 📜 许可 — AGPLv3
 
-本项目基于 **GNU Affero General Public License v3.0（AGPL-3.0）** 许可证发布。
+本项目采用**GNU Affero通用公共许可证第3版（AGPL-3.0）** 许可。
 
-使用、修改或分发本软件时，你**必须**：
+在使用、修改或分发本软件时，你**必须**：
 
-- 保留版权声明  
-- 公开任何修改版本的源代码  
-- 在将本软件用于提供网络服务时公开相应的源代码  
-- 任何派生作品需采用 **AGPL-3.0** 许可证  
+- 保留此版权声明
+- 披露任何修改版本的源代码
+- 若用于提供网络服务，必须披露源代码
+- 任何衍生作品必须采用**AGPL-3.0**许可
 
-完整许可证文本见：[`LICENSE`](./LICENSE)
+请查看完整的许可证文本：[`LICENSE`](./LICENSE)
 
 ### ⚠️ 免责声明
 
-**使用风险自负。** PruneMate 按“原样”提供，不附带任何形式的担保。  
-作者与贡献者不对以下情况负责：
+**风险自负。** PruneMate 按“原样”提供，不提供任何形式的担保。作者和贡献者不对以下内容负责：
+- 因清理Docker资源导致的数据丢失
+- 服务中断或停机
+- 系统不稳定或性能问题
+- 因使用或误用本软件导致的任何损失
 
-- 因清理 Docker 资源导致的数据丢失  
-- 服务中断或宕机  
-- 系统不稳定或性能问题  
-- 任何因使用或误用本软件引起的损害  
-
-请务必：
-
-- ✅ 明确了解哪些资源会被删除  
-- ✅ 为重要数据和配置保留备份  
-- ✅ 在清理操作后检查日志  
-- ✅ 从较保守的设置开始使用  
+请始终：
+- ✅ 明确了解将被删除的资源
+- ✅ 备份重要数据和配置
+- ✅ 在清理操作后查看日志
+- ✅ 从保守设置开始
 
 © 2025 – PruneMate 项目
 
 ---
 
 <p align="center">
-  <strong>使用 PruneMate，让你的 Docker 主机保持干净整洁！ 🐳🧹</strong>
+  <strong>使用PruneMate，让你的Docker主机保持干净整洁！ 🐳🧹</strong>
 </p>

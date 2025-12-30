@@ -1,3 +1,13 @@
+"""PruneMate - Docker定时清理助手
+
+功能特性：
+1. 支持定时清理Docker资源
+2. 可清理：容器、镜像、网络、卷、构建缓存
+3. 支持多Docker主机
+4. 通知集成：Gotify、ntfy、Discord、Telegram
+5. 历史统计与预览功能
+"""
+
 import os
 import sys
 import json
@@ -19,24 +29,24 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from zoneinfo import ZoneInfo
 
-# optional docker import (best-effort)
+# 可选Docker导入（最佳尝试）
 try:
     import docker
 except Exception:
     docker = None
 
-# Application
+# Flask应用初始化
 app = Flask(__name__)
 app.secret_key = os.environ.get("PRUNEMATE_SECRET", "prunemate-secret-key")
 
-# Paths and defaults
+# 路径和默认配置
 CONFIG_PATH = Path(os.environ.get("PRUNEMATE_CONFIG", "/config/config.json"))
-# File lock to serialize prune jobs across processes
+# 文件锁：确保跨进程的清理任务不会同时执行
 LOCK_FILE = Path(os.environ.get("PRUNEMATE_LOCK", "/config/prunemate.lock"))
-# File to persist the last run key so multiple workers don't double-trigger
+# 用于记录上次运行时间的文件，防止多Worker重复执行
 LAST_RUN_FILE = Path(os.environ.get("PRUNEMATE_LAST_RUN", "/config/last_run_key"))
 LAST_RUN_LOCK = Path(str(LAST_RUN_FILE) + ".lock")
-# File to persist all-time statistics
+# 用于保存历史统计数据的文件
 STATS_FILE = Path(os.environ.get("PRUNEMATE_STATS", "/config/stats.json"))
 
 DEFAULT_CONFIG = {
@@ -62,28 +72,30 @@ DEFAULT_CONFIG = {
     },
 }
 
+# 配置字典，初始化为默认配置
 config = json.loads(json.dumps(DEFAULT_CONFIG))
-# Lock to ensure thread-safe config read/write across workers
+# 配置读写锁，确保多Worker线程安全
 import threading
 config_lock = threading.RLock()
-# In-memory cache (best-effort) for last run; authoritative value is on disk
+# 内存缓存上次运行时间
 last_run_key = {"value": None}
 
-# ---- Early exit for CLI tools before initializing heavy components ----
+# ---- CLI工具处理 ----
 if len(sys.argv) > 1 and sys.argv[1] == "--gen-hash":
     if len(sys.argv) > 2:
         password = sys.argv[2]
-        # Generate hash
+        # 生成密码哈希
         raw_hash = generate_password_hash(password)
         safe_hash = base64.b64encode(raw_hash.encode("utf-8")).decode("utf-8")
         print(safe_hash)
         sys.exit(0)
     else:
-        print("Usage: python prunemate.py --gen-hash <password>")
+        print("用法: python prunemate.py --gen-hash <密码>")
         sys.exit(1)
 
+
 def configure_logging():
-    """Configure logging with console and rotating file handlers."""
+    """配置日志记录，支持控制台和文件滚动日志"""
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     ch = logging.StreamHandler()
@@ -92,36 +104,34 @@ def configure_logging():
     try:
         Path("/var/log").mkdir(parents=True, exist_ok=True)
         fh = RotatingFileHandler("/var/log/prunemate.log", maxBytes=5_000_000, backupCount=3)
-        # Note: %(asctime)s uses system local time, not app_timezone
-        # Custom log() function handles timezone-aware timestamps
         fh.setFormatter(logging.Formatter("%(message)s"))
         logger.addHandler(fh)
     except Exception:
-        logger.exception("Failed to configure file logging; continuing with console only.")
+        logger.exception("文件日志配置失败；仅使用控制台日志继续运行。")
 
 
 configure_logging()
 
 
-# Timezone
+# 时区配置
 tz_name = os.environ.get("PRUNEMATE_TZ", "UTC")
 try:
     app_timezone = ZoneInfo(tz_name)
 except Exception:
-    logging.warning("Invalid timezone '%s', falling back to UTC", tz_name)
+    logging.warning("时区 '%s' 无效，回退到UTC", tz_name)
     app_timezone = ZoneInfo("UTC")
 
-logging.info("Using timezone: %s", app_timezone)
+logging.info("使用时区: %s", app_timezone)
 
-# Time format (12h or 24h)
+# 时间格式（12小时制或24小时制）
 use_24h_format = os.environ.get("PRUNEMATE_TIME_24H", "true").lower() in ("true", "1", "yes")
-logging.info("Using time format: %s", "24-hour" if use_24h_format else "12-hour")
+logging.info("使用时间格式: %s", "24小时制" if use_24h_format else "12小时制")
 
-# Suppress verbose APScheduler job execution logs
+# 抑制APScheduler冗长的任务执行日志
 logging.getLogger("apscheduler.executors.default").setLevel(logging.WARNING)
 
-# Scheduler
-# Background scheduler for minute heartbeat. Jobs are added in __main__.
+# 调度器初始化
+# 后台调度器用于每分钟心跳检查，实际任务在__main__中添加
 scheduler = BackgroundScheduler(
     timezone=app_timezone,
     job_defaults={
@@ -133,21 +143,21 @@ scheduler.start()
 
 
 def log(message: str):
-    """Log a message with a timezone-aware timestamp."""
+    """带时区时间戳的日志记录"""
     now = datetime.datetime.now(app_timezone)
     timestamp = now.isoformat(timespec="seconds")
     logging.info("[%s] %s", timestamp, message)
 
 
 def _redact_for_log(obj):
-    """Return a deep-copied structure with secrets redacted for safe logging."""
+    """递归清理日志中的敏感信息"""
     if isinstance(obj, dict):
         redacted = {}
         for k, v in obj.items():
             if k.lower() in {"token", "api_key", "apikey", "password", "secret"}:
                 redacted[k] = "***"
             elif k.lower() == "url" and isinstance(v, str):
-                # Redact username:password in URLs
+                # 清理URL中的用户名和密码
                 parsed = urllib.parse.urlparse(v)
                 if parsed.username or parsed.password:
                     clean_url = urllib.parse.urlunparse((
@@ -169,22 +179,21 @@ def _redact_for_log(obj):
     return obj
 
 
-# ---- Cross-process last-run tracking (prevents duplicate scheduled triggers) ----
+# ---- 跨进程的上次运行时间管理 ----
 def _read_last_run_key() -> str | None:
-    """Read the last run key from disk in a thread-safe manner."""
+    """从磁盘读取上次运行时间"""
     try:
-        # Use a short lock to avoid concurrent reads/writes across workers
         with FileLock(str(LAST_RUN_LOCK)):
             if LAST_RUN_FILE.exists():
                 return LAST_RUN_FILE.read_text(encoding="utf-8").strip() or None
     except Exception:
-        # Best-effort: on any error, fall back to in-memory state
+        # 读取失败时回退到内存缓存
         pass
     return None
 
 
 def _write_last_run_key(key: str) -> None:
-    """Write the last run key to disk atomically."""
+    """将上次运行时间写入磁盘"""
     try:
         with FileLock(str(LAST_RUN_LOCK)):
             parent = LAST_RUN_FILE.parent
@@ -197,12 +206,12 @@ def _write_last_run_key(key: str) -> None:
                 pass
             tmp.replace(LAST_RUN_FILE)
     except Exception:
-        # Non-fatal: fall back to in-memory only
+        # 写入失败时回退到内存缓存
         pass
 
 
 def _clear_last_run_key() -> None:
-    """Clear the last run key from memory and disk."""
+    """清除内存和磁盘上的上次运行时间记录"""
     last_run_key["value"] = None
     try:
         with FileLock(str(LAST_RUN_LOCK)):
@@ -212,10 +221,9 @@ def _clear_last_run_key() -> None:
         pass
 
 
-# ---- All-time statistics tracking ----
+# ---- 历史统计数据管理 ----
 def load_stats() -> dict:
-    """Load cumulative statistics from disk with migration support."""
-    # Default stats structure (source of truth for all fields)
+    """从磁盘加载历史统计数据"""
     default_stats = {
         "total_space_reclaimed": 0,
         "containers_deleted": 0,
@@ -233,33 +241,30 @@ def load_stats() -> dict:
             with open(STATS_FILE, "r", encoding="utf-8") as f:
                 loaded_stats = json.load(f)
             
-            # Merge with defaults to handle missing fields (forward compatibility)
-            # This ensures new fields added in future versions get default values
             merged_stats = json.loads(json.dumps(default_stats))
             for key in default_stats:
                 if key in loaded_stats:
-                    # Type safety: ensure numeric fields are actually numbers
                     if key in {"total_space_reclaimed", "containers_deleted", "images_deleted", 
                               "networks_deleted", "volumes_deleted", "build_cache_deleted", "prune_runs"}:
                         try:
                             merged_stats[key] = int(loaded_stats[key])
                         except (ValueError, TypeError):
-                            log(f"Stats field '{key}' has invalid type, using default: 0")
+                            log(f"统计字段 '{key}' 类型无效，使用默认值: 0")
                             merged_stats[key] = 0
                     else:
                         merged_stats[key] = loaded_stats[key]
             
             return merged_stats
     except json.JSONDecodeError as e:
-        log(f"Stats file corrupt (invalid JSON): {e}. Using defaults and will overwrite on next save.")
+        log(f"统计文件损坏（无效JSON）: {e}。使用默认配置，下次保存将覆盖。")
     except Exception as e:
-        log(f"Error loading stats from {STATS_FILE}: {e}")
+        log(f"从 {STATS_FILE} 加载统计数据时出错: {e}")
     
     return json.loads(json.dumps(default_stats))
 
 
 def save_stats(stats: dict) -> None:
-    """Atomically save statistics to disk."""
+    """原子化保存统计数据到磁盘"""
     try:
         parent = STATS_FILE.parent
         parent.mkdir(parents=True, exist_ok=True)
@@ -278,7 +283,7 @@ def save_stats(stats: dict) -> None:
                 pass
             
             tmp_path.replace(STATS_FILE)
-            log(f"Statistics saved to {STATS_FILE}")
+            log(f"统计数据已保存到 {STATS_FILE}")
         except Exception:
             if tmp_path and tmp_path.exists():
                 try:
@@ -287,16 +292,14 @@ def save_stats(stats: dict) -> None:
                     pass
             raise
     except Exception as e:
-        log(f"Error saving statistics: {e}")
+        log(f"保存统计数据时出错: {e}")
 
 
 def update_stats(containers: int, images: int, networks: int, volumes: int, build_cache: int, space: int) -> None:
-    """Update cumulative statistics after a prune run with type safety."""
+    """更新历史统计数据"""
     stats = load_stats()
     
-    # Type-safe increments (load_stats already validates types, but be defensive)
     try:
-        # Extra defensive: convert None to 0 before int() to handle null values from old stats
         stats["containers_deleted"] = int(stats.get("containers_deleted") or 0) + int(containers or 0)
         stats["images_deleted"] = int(stats.get("images_deleted") or 0) + int(images or 0)
         stats["networks_deleted"] = int(stats.get("networks_deleted") or 0) + int(networks or 0)
@@ -305,8 +308,7 @@ def update_stats(containers: int, images: int, networks: int, volumes: int, buil
         stats["total_space_reclaimed"] = int(stats.get("total_space_reclaimed") or 0) + int(space or 0)
         stats["prune_runs"] = int(stats.get("prune_runs") or 0) + 1
     except (ValueError, TypeError) as e:
-        log(f"Type error in stats update: {e}. Stats may be incomplete.")
-        # Continue with partial update rather than failing completely
+        log(f"统计数据更新时类型错误: {e}。统计数据可能不完整。")
     
     now = datetime.datetime.now(app_timezone).isoformat()
     if stats.get("first_run") is None:
@@ -317,7 +319,7 @@ def update_stats(containers: int, images: int, networks: int, volumes: int, buil
 
 
 def human_bytes(num: int) -> str:
-    """Convert bytes to human-readable format (B, KB, MB, GB, TB, PB)."""
+    """将字节数转换为人类可读的格式（B, KB, MB, GB, TB, PB）"""
     n = float(num)
     for unit in ["B", "KB", "MB", "GB", "TB"]:
         if n < 1024.0:
@@ -327,55 +329,55 @@ def human_bytes(num: int) -> str:
 
 
 def format_time(time_str: str) -> str:
-    """Format time string according to user preference (12h or 24h)."""
+    """根据用户偏好格式化时间字符串"""
     if use_24h_format:
         return time_str
-    # Convert 24h to 12h format
+    # 将24小时格式转换为12小时格式
     try:
         parts = time_str.split(":")
         hour = int(parts[0])
         minute = parts[1] if len(parts) > 1 else "00"
         
         if hour == 0:
-            return f"12:{minute} AM"
+            return f"12:{minute} 上午"
         elif hour < 12:
-            return f"{hour}:{minute} AM"
+            return f"{hour}:{minute} 上午"
         elif hour == 12:
-            return f"12:{minute} PM"
+            return f"12:{minute} 下午"
         else:
-            return f"{hour - 12}:{minute} PM"
+            return f"{hour - 12}:{minute} 下午"
     except Exception:
         return time_str
 
 
 def describe_schedule() -> str:
-    """Generate a human-readable description of the current schedule."""
+    """生成当前计划任务的人类可读描述"""
     freq = config.get("frequency", "daily")
     time_str = config.get("time", "03:00")
     formatted_time = format_time(time_str)
     if freq == "daily":
-        return f"daily at {formatted_time} ({tz_name})"
+        return f"每日 {formatted_time} ({tz_name})"
     if freq == "weekly":
         day_key = config.get("day_of_week", "mon")
         day_names = {
-            "mon": "Monday", "tue": "Tuesday", "wed": "Wednesday",
-            "thu": "Thursday", "fri": "Friday", "sat": "Saturday", "sun": "Sunday",
+            "mon": "周一", "tue": "周二", "wed": "周三",
+            "thu": "周四", "fri": "周五", "sat": "周六", "sun": "周日",
         }
-        return f"weekly at {day_names.get(day_key, day_key)} {formatted_time} ({tz_name})"
+        return f"每周 {day_names.get(day_key, day_key)} {formatted_time} ({tz_name})"
     if freq == "monthly":
         day_of_month = config.get("day_of_month", 1)
-        return f"monthly on day {day_of_month} at {formatted_time} ({tz_name})"
-    return f"{freq} at {formatted_time} ({tz_name})"
+        return f"每月 {day_of_month} 日 {formatted_time} ({tz_name})"
+    return f"{freq} {formatted_time} ({tz_name})"
 
 
 def validate_time(s: str) -> str:
-    """Validate HH:MM time format and clamp to valid 24h range on parse errors."""
+    """验证时间格式，确保为HH:MM格式"""
     try:
         parts = s.split(":", 1)
         h = int(parts[0])
         m = int(parts[1]) if len(parts) > 1 else 0
     except Exception as e:
-        log(f"Invalid time format '{s}': {e}. Falling back to 03:00")
+        log(f"时间格式 '{s}' 无效: {e}。回退到 03:00")
         h, m = 3, 0
     h = max(0, min(23, h))
     m = max(0, min(59, m))
@@ -383,27 +385,16 @@ def validate_time(s: str) -> str:
 
 
 def _deep_merge(base: dict, override: dict) -> None:
-    """Deep merge override dict into base dict, preserving nested structures.
-    
-    This ensures that nested dicts like notifications.gotify and notifications.ntfy
-    are merged individually rather than being completely replaced.
-    
-    Example:
-        base = {"notifications": {"gotify": {...}, "ntfy": {...}}}
-        override = {"notifications": {"provider": "ntfy"}}
-        Result: base keeps gotify and ntfy sub-dicts, only updates provider field
-    """
+    """深度合并两个字典"""
     for key, value in override.items():
         if key in base and isinstance(base[key], dict) and isinstance(value, dict):
-            # Recursively merge nested dicts
             _deep_merge(base[key], value)
         else:
-            # Overwrite primitives and lists
             base[key] = value
 
 
 def effective_config():
-    """Return the current effective configuration with relevant fields."""
+    """返回当前有效的配置"""
     freq = config.get("frequency", "daily")
     base = {
         "schedule_enabled": config.get("schedule_enabled", True),
@@ -425,30 +416,25 @@ def effective_config():
 
 
 def load_config(silent=False):
-    """Load configuration from disk with deep merge. Set silent=True to suppress logging."""
+    """从磁盘加载配置文件"""
     global config
     with config_lock:
         try:
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
             merged = json.loads(json.dumps(DEFAULT_CONFIG))
-            # Deep merge: preserve nested structures like notifications.gotify, notifications.ntfy
             _deep_merge(merged, data)
 
-            # Migrate legacy notification keys into new notifications structure (best-effort)
-            # Only migrate if new structure doesn't exist in loaded config
+            # 迁移旧版通知配置
             if "notifications" not in data:
-                # Check if we have any legacy notification keys to migrate
                 has_gotify_keys = any(k in data for k in ("gotify_enabled", "gotify_url", "gotify_token"))
                 has_ntfy_keys = any(k in data for k in ("ntfy_enabled", "ntfy_url", "ntfy_topic", "ntfy_token"))
                 has_discord_keys = any(k in data for k in ("discord_enabled", "discord_webhook_url"))
                 
                 if has_gotify_keys or has_ntfy_keys or has_discord_keys:
-                    # Ensure notifications exists with defaults before migration
                     if "notifications" not in merged:
                         merged["notifications"] = json.loads(json.dumps(DEFAULT_CONFIG["notifications"]))
                     
-                    # Migrate Gotify settings if present
                     if has_gotify_keys:
                         got = {
                             "enabled": bool(data.get("gotify_enabled")),
@@ -457,7 +443,6 @@ def load_config(silent=False):
                         }
                         merged["notifications"]["gotify"] = got
                     
-                    # Migrate ntfy settings if present
                     if has_ntfy_keys:
                         ntf = {
                             "enabled": bool(data.get("ntfy_enabled")),
@@ -467,7 +452,6 @@ def load_config(silent=False):
                         }
                         merged["notifications"]["ntfy"] = ntf
                     
-                    # Migrate Discord settings if present
                     if has_discord_keys:
                         disc = {
                             "enabled": bool(data.get("discord_enabled")),
@@ -475,7 +459,6 @@ def load_config(silent=False):
                         }
                         merged["notifications"]["discord"] = disc
                     
-                    # Migrate provider selection (default to gotify for backwards compatibility)
                     if has_discord_keys and data.get("discord_enabled"):
                         merged["notifications"]["provider"] = "discord"
                     elif has_ntfy_keys and data.get("ntfy_enabled"):
@@ -483,25 +466,22 @@ def load_config(silent=False):
                     elif has_gotify_keys:
                         merged["notifications"]["provider"] = "gotify"
                     
-                    # Migrate only_on_changes setting (check both legacy keys, prefer gotify)
                     if "gotify_only_on_changes" in data:
                         merged["notifications"]["only_on_changes"] = bool(data["gotify_only_on_changes"])
                     elif "ntfy_only_on_changes" in data:
                         merged["notifications"]["only_on_changes"] = bool(data["ntfy_only_on_changes"])
             
-            # Ensure notifications key exists with all required subkeys
             if "notifications" not in merged:
                 merged["notifications"] = json.loads(json.dumps(DEFAULT_CONFIG["notifications"]))
             
-            # Ensure all provider subkeys exist (forward compatibility for new providers like telegram)
+            # 确保所有通知提供商的配置都存在
             for provider_key in ["gotify", "ntfy", "discord", "telegram"]:
                 if provider_key not in merged["notifications"]:
-                    merged["notifications"][provider_key] = json.loads(json.dumps(DEFAULT_CONFIG["notifications"][provider_key]))
+                    merged["notifications"]["provider_key"] = json.loads(json.dumps(DEFAULT_CONFIG["notifications"][provider_key]))
             
-            # Migrate numeric priority (1-10) to text priority (low/medium/high)
+            # 迁移数字优先级到文本优先级
             priority = merged.get("notifications", {}).get("priority")
             if isinstance(priority, int):
-                # Map: 1-3 -> low, 4-7 -> medium, 8-10 -> high
                 if priority <= 3:
                     merged["notifications"]["priority"] = "low"
                 elif priority <= 7:
@@ -509,21 +489,19 @@ def load_config(silent=False):
                 else:
                     merged["notifications"]["priority"] = "high"
             elif not isinstance(priority, str) or priority not in ["low", "medium", "high"]:
-                # Invalid or missing priority, set to default
                 merged["notifications"]["priority"] = "medium"
             
-            # Ensure docker_hosts exists and has valid structure
             if "docker_hosts" not in merged or not isinstance(merged["docker_hosts"], list):
                 merged["docker_hosts"] = json.loads(json.dumps(DEFAULT_CONFIG["docker_hosts"]))
-            # Clean up: remove Local/unix:// entries that shouldn't be persisted
+            # 清理本地Docker主机记录
             merged["docker_hosts"] = [
                 h for h in merged["docker_hosts"]
                 if h.get("name") != "Local" and "unix://" not in h.get("url", "")
             ]
-            # Validate each remaining host entry has required fields
+            # 验证每个主机的必填字段
             for host in merged["docker_hosts"]:
                 if "name" not in host:
-                    host["name"] = "Unnamed"
+                    host["name"] = "未命名"
                 if "url" not in host:
                     host["url"] = "tcp://localhost:2375"
                 if "enabled" not in host:
@@ -531,26 +509,25 @@ def load_config(silent=False):
 
             config = merged
             if not silent:
-                log(f"Loaded config from {CONFIG_PATH}: {_redact_for_log(effective_config())}")
+                log(f"从 {CONFIG_PATH} 加载配置: {_redact_for_log(effective_config())}")
         except FileNotFoundError:
             if not silent:
-                log(f"No config file found at {CONFIG_PATH}, using defaults.")
+                log(f"未找到配置文件 {CONFIG_PATH}，使用默认配置。")
             config = json.loads(json.dumps(DEFAULT_CONFIG))
         except Exception as e:
             if not silent:
-                log(f"Error loading config from {CONFIG_PATH}: {e}. Using defaults.")
+                log(f"从 {CONFIG_PATH} 加载配置时出错: {e}。使用默认配置。")
             config = json.loads(json.dumps(DEFAULT_CONFIG))
 
 
 def save_config():
-    """Atomic save with fsync and restricted permissions (best-effort)."""
+    """原子化保存配置到磁盘"""
     with config_lock:
         try:
             path = Path(CONFIG_PATH)
             parent = path.parent or Path(".")
             parent.mkdir(parents=True, exist_ok=True)
 
-            # Clean up docker_hosts: remove Local/unix:// entries before saving
             config_to_save = json.loads(json.dumps(config))
             if "docker_hosts" in config_to_save:
                 config_to_save["docker_hosts"] = [
@@ -565,37 +542,33 @@ def save_config():
                     tmp.flush()
                     os.fsync(tmp.fileno())
                     tmp_path = Path(tmp.name)
-                # try to restrict permissions (best-effort)
                 try:
                     tmp_path.chmod(0o600)
                 except Exception:
                     pass
-                # atomic replace
                 tmp_path.replace(path)
-                log(f"Config saved to {path}: {_redact_for_log(config_to_save)}")
+                log(f"配置已保存到 {path}: {_redact_for_log(config_to_save)}")
             finally:
-                # cleanup leftover temp if any
                 if tmp_path and tmp_path.exists() and tmp_path != path:
                     try:
                         tmp_path.unlink()
                     except Exception:
                         pass
         except Exception as e:
-            log(f"Failed to save config to {CONFIG_PATH}: {e}")
+            log(f"保存配置到 {CONFIG_PATH} 时失败: {e}")
 
 
 def _send_gotify(cfg: dict, title: str, message: str, priority: str = "medium") -> bool:
-    """Send a notification via Gotify."""
+    """通过Gotify发送通知"""
     if not cfg.get("enabled"):
-        log("Gotify disabled; skipping notification.")
+        log("Gotify已禁用；跳过通知。")
         return False
     url = (cfg.get("url") or "").strip()
     token = (cfg.get("token") or "").strip()
     if not url or not token:
-        log("Gotify enabled but URL/token missing; skipping.")
+        log("Gotify已启用但URL或令牌缺失；跳过。")
         return False
     
-    # Map priority: low=2, medium=5, high=8
     priority_map = {"low": 2, "medium": 5, "high": 8}
     gotify_priority = priority_map.get(priority, 2)
     
@@ -604,41 +577,36 @@ def _send_gotify(cfg: dict, title: str, message: str, priority: str = "medium") 
     req = urllib.request.Request(endpoint, data=payload, headers={"Content-Type": "application/json"}, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=5) as resp:
-            log(f"Gotify notification sent, status={getattr(resp, 'status', '?')}")
+            log(f"Gotify通知已发送，状态={getattr(resp, 'status', '?')}")
             return True
     except Exception as e:
-        log(f"Failed to send Gotify notification: {e}")
+        log(f"发送Gotify通知失败: {e}")
         return False
 
 
 def _send_ntfy(cfg: dict, title: str, message: str, priority: str = "medium") -> bool:
-    """Send a notification via ntfy."""
+    """通过ntfy发送通知"""
     if not cfg.get("enabled"):
-        log("ntfy disabled; skipping notification.")
+        log("ntfy已禁用；跳过通知。")
         return False
     url = (cfg.get("url") or "").strip()
     topic = (cfg.get("topic") or "").strip()
     token = (cfg.get("token") or "").strip()
     
     if not url or not topic:
-        log("ntfy enabled but URL/topic missing; skipping.")
+        log("ntfy已启用但URL或主题缺失；跳过。")
         return False
     
-    # Map priority: low=2, medium=3, high=5 (ntfy range is 1-5)
     priority_map = {"low": 2, "medium": 3, "high": 5}
     ntfy_priority = priority_map.get(priority, 2)
     
-    # Parse URL to extract authentication
     parsed = urllib.parse.urlparse(url)
     headers = {"Title": title, "Priority": str(ntfy_priority), "Content-Type": "text/plain"}
     
-    # Priority 1: Use explicit token if provided (Bearer token auth)
     if token:
         headers["Authorization"] = f"Bearer {token}"
         endpoint = url.rstrip("/") + "/" + topic.lstrip("/")
-    # Priority 2: Check if URL contains username:password (Basic auth)
     elif parsed.username or parsed.password:
-        # Reconstruct URL without credentials
         clean_url = urllib.parse.urlunparse((
             parsed.scheme,
             parsed.hostname + (f":{parsed.port}" if parsed.port else ""),
@@ -647,7 +615,6 @@ def _send_ntfy(cfg: dict, title: str, message: str, priority: str = "medium") ->
             parsed.query,
             parsed.fragment
         ))
-        # Add Basic Auth header
         username = parsed.username or ""
         password = parsed.password or ""
         credentials = f"{username}:{password}"
@@ -655,46 +622,41 @@ def _send_ntfy(cfg: dict, title: str, message: str, priority: str = "medium") ->
         headers["Authorization"] = f"Basic {encoded_credentials}"
         endpoint = clean_url.rstrip("/") + "/" + topic.lstrip("/")
     else:
-        # No authentication
         endpoint = url.rstrip("/") + "/" + topic.lstrip("/")
     
     payload = message.encode("utf-8")
     req = urllib.request.Request(endpoint, data=payload, headers=headers, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=5) as resp:
-            log(f"ntfy notification sent, status={getattr(resp, 'status', '?')}")
+            log(f"ntfy通知已发送，状态={getattr(resp, 'status', '?')}")
             return True
     except Exception as e:
-        log(f"Failed to send ntfy notification: {e}")
+        log(f"发送ntfy通知失败: {e}")
         return False
 
 
 def _send_discord(cfg: dict, title: str, message: str, priority: str = "medium") -> bool:
-    """Send a notification via Discord webhook."""
+    """通过Discord Webhook发送通知"""
     if not cfg.get("enabled"):
-        log("Discord disabled; skipping notification.")
+        log("Discord已禁用；跳过通知。")
         return False
     webhook_url = (cfg.get("webhook_url") or "").strip()
     if not webhook_url:
-        log("Discord enabled but webhook_url missing; skipping.")
+        log("Discord已启用但Webhook URL缺失；跳过。")
         return False
     
-    # Validate webhook URL format
     if not webhook_url.startswith("https://discord.com/api/webhooks/") and \
        not webhook_url.startswith("https://discordapp.com/api/webhooks/"):
-        log(f"Invalid Discord webhook URL format: {webhook_url[:50]}...")
+        log(f"Discord Webhook URL格式无效: {webhook_url[:50]}...")
         return False
     
-    # Map priority to Discord color (embed left border color)
-    # low: green (info), medium: orange (warning), high: red (critical)
     color_map = {
-        "low": 0x2ECC71,     # Green
-        "medium": 0xF39C12,  # Orange
-        "high": 0xE74C3C,    # Red
+        "low": 0x2ECC71,     # 绿色（信息）
+        "medium": 0xF39C12,  # 橙色（警告）
+        "high": 0xE74C3C,    # 红色（严重）
     }
-    embed_color = color_map.get(priority, 0x2ECC71)  # Default: Green
+    embed_color = color_map.get(priority, 0x2ECC71)
     
-    # Format message for Discord (preserve line breaks)
     payload = {
         "embeds": [{
             "title": title,
@@ -705,15 +667,14 @@ def _send_discord(cfg: dict, title: str, message: str, priority: str = "medium")
     }
     
     data = json.dumps(payload).encode("utf-8")
-    # Discord requires proper headers including User-Agent
     headers = {
         "Content-Type": "application/json",
-        "User-Agent": "PruneMate/1.3.0 (Docker cleanup bot)"
+        "User-Agent": "PruneMate/1.3.0 (Docker清理助手)"
     }
     req = urllib.request.Request(webhook_url, data=data, headers=headers, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            log(f"Discord notification sent, status={getattr(resp, 'status', '?')}")
+            log(f"Discord通知已发送，状态={getattr(resp, 'status', '?')}")
             return True
     except urllib.error.HTTPError as e:
         error_body = ""
@@ -721,35 +682,31 @@ def _send_discord(cfg: dict, title: str, message: str, priority: str = "medium")
             error_body = e.read().decode("utf-8")
         except Exception:
             pass
-        log(f"Discord webhook HTTP error {e.code}: {e.reason}. Body: {error_body[:200]}")
+        log(f"Discord Webhook HTTP错误 {e.code}: {e.reason}。响应体: {error_body[:200]}")
         return False
     except urllib.error.URLError as e:
-        log(f"Discord webhook network error: {e.reason}")
+        log(f"Discord Webhook网络错误: {e.reason}")
         return False
     except Exception as e:
-        log(f"Failed to send Discord notification: {e}")
+        log(f"发送Discord通知失败: {e}")
         return False
 
 
 def _send_telegram(cfg: dict, title: str, message: str, priority: str = "medium") -> bool:
-    """Send a notification via Telegram Bot API."""
+    """通过Telegram Bot API发送通知"""
     if not cfg.get("enabled"):
-        log("Telegram disabled; skipping notification.")
+        log("Telegram已禁用；跳过通知。")
         return False
     bot_token = (cfg.get("bot_token") or "").strip()
     chat_id = (cfg.get("chat_id") or "").strip()
     if not bot_token or not chat_id:
-        log("Telegram enabled but bot_token/chat_id missing; skipping.")
+        log("Telegram已启用但bot_token或chat_id缺失；跳过。")
         return False
     
-    # Telegram doesn't have native priority support
-    # We use disable_notification for low priority (silent), normal for medium/high
     disable_notification = (priority == "low")
     
-    # Format message with title
     full_message = f"<b>{title}</b>\n\n{message}"
     
-    # Telegram Bot API endpoint
     api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     
     payload = json.dumps({
@@ -764,7 +721,7 @@ def _send_telegram(cfg: dict, title: str, message: str, priority: str = "medium"
         data=payload,
         headers={
             "Content-Type": "application/json",
-            "User-Agent": "PruneMate/1.3.0 (Docker cleanup bot)"
+            "User-Agent": "PruneMate/1.3.0 (Docker清理助手)"
         },
         method="POST"
     )
@@ -773,18 +730,18 @@ def _send_telegram(cfg: dict, title: str, message: str, priority: str = "medium"
         with urllib.request.urlopen(req, timeout=10) as resp:
             result = json.loads(resp.read().decode("utf-8"))
             if result.get("ok"):
-                log(f"Telegram notification sent, message_id={result.get('result', {}).get('message_id', '?')}")
+                log(f"Telegram通知已发送，消息ID={result.get('result', {}).get('message_id', '?')}")
                 return True
             else:
-                log(f"Telegram API returned ok=false: {result}")
+                log(f"Telegram API返回ok=false: {result}")
                 return False
     except Exception as e:
-        log(f"Failed to send Telegram notification: {e}")
+        log(f"发送Telegram通知失败: {e}")
         return False
 
 
 def send_notification(title: str, message: str, priority: str = "medium") -> bool:
-    """Send a notification using the configured provider (gotify, ntfy, discord, or telegram)."""
+    """使用配置的通知提供商发送通知"""
     notcfg = config.get("notifications", DEFAULT_CONFIG["notifications"])
     provider = (notcfg.get("provider") or "gotify").lower()
     if provider == "gotify":
@@ -795,42 +752,30 @@ def send_notification(title: str, message: str, priority: str = "medium") -> boo
         return _send_discord(notcfg.get("discord", {}), title, message, priority)
     if provider == "telegram":
         return _send_telegram(notcfg.get("telegram", {}), title, message, priority)
-    log(f"Unknown notification provider '{provider}'; skipping.")
+    log(f"未知的通知提供商 '{provider}'; 跳过通知。")
     return False
 
 
 def create_docker_client(host_url: str):
-    """Create a Docker client for the given host URL.
-    
-    Args:
-        host_url: Docker host URL (e.g., 'unix:///var/run/docker.sock', 'tcp://host:2375')
-    
-    Returns:
-        Docker client instance or None on failure
-    """
+    """创建Docker客户端实例"""
     if docker is None:
-        log("Docker SDK not available.")
+        log("Docker SDK不可用。")
         return None
     
     try:
-        # Support both unix sockets and TCP connections
         if host_url.startswith("unix://"):
             return docker.DockerClient(base_url=host_url)
         elif host_url.startswith("tcp://") or host_url.startswith("http://") or host_url.startswith("https://"):
             return docker.DockerClient(base_url=host_url)
         else:
-            # Fallback: try as-is
             return docker.DockerClient(base_url=host_url)
     except Exception as e:
-        log(f"Failed to create Docker client for {host_url}: {e}")
+        log(f"为 {host_url} 创建Docker客户端失败: {e}")
         return None
 
 
 def get_prune_preview() -> dict:
-    """Get a preview of what would be pruned without actually pruning.
-    
-    Returns a dict with preview results per host and aggregate totals.
-    """
+    """获取清理预览，不实际执行清理"""
     load_config(silent=True)
     
     if not any([
@@ -840,12 +785,11 @@ def get_prune_preview() -> dict:
         config.get("prune_volumes"),
         config.get("prune_build_cache"),
     ]):
-        return {"error": "No prune options selected", "hosts": []}
+        return {"error": "未选择任何清理选项", "hosts": []}
     
     if docker is None:
-        return {"error": "Docker SDK not available", "hosts": []}
+        return {"error": "Docker SDK不可用", "hosts": []}
     
-    # Get all hosts (local + external)
     docker_hosts = config.get("docker_hosts", [])
     enabled_external_hosts = [
         h for h in docker_hosts 
@@ -853,7 +797,7 @@ def get_prune_preview() -> dict:
     ]
     
     all_hosts = [
-        {"name": "Local", "url": "unix:///var/run/docker.sock", "enabled": True}
+        {"name": "本地", "url": "unix:///var/run/docker.sock", "enabled": True}
     ] + enabled_external_hosts
     
     preview_results = []
@@ -864,7 +808,7 @@ def get_prune_preview() -> dict:
     total_build_cache = 0
     
     for host in all_hosts:
-        host_name = host.get("name", "Unnamed")
+        host_name = host.get("name", "未命名")
         host_url = host.get("url", "unix:///var/run/docker.sock")
         
         client = None
@@ -875,7 +819,7 @@ def get_prune_preview() -> dict:
                     "name": host_name,
                     "url": host_url,
                     "success": False,
-                    "error": "Failed to connect",
+                    "error": "连接失败",
                     "containers": [],
                     "images": [],
                     "networks": [],
@@ -890,11 +834,8 @@ def get_prune_preview() -> dict:
             volumes_list = []
             build_cache_list = []
             
-            # Preview containers (stopped containers)
             if config.get("prune_containers"):
                 try:
-                    # List all stopped containers (exited, dead, created)
-                    # This matches what containers.prune() actually removes
                     all_containers = client.containers.list(all=True)
                     stopped_containers = [c for c in all_containers if c.status in ["exited", "dead", "created"]]
                     containers_list = [
@@ -902,22 +843,17 @@ def get_prune_preview() -> dict:
                         for c in stopped_containers
                     ]
                 except Exception as e:
-                    log(f"[{host_name}] Error listing containers: {e}")
+                    log(f"[{host_name}] 列出容器时出错: {e}")
             
-            # Preview images (all unused images, matching prune behavior)
             if config.get("prune_images"):
                 try:
-                    # List all unused images (dangling=False means all unused, not just dangling)
-                    # This matches client.images.prune(filters={"dangling": False}) behavior
                     all_images = client.images.list()
-                    # Get images in use by containers
                     used_image_ids = set()
                     for container in client.containers.list(all=True):
                         img_id = container.attrs.get("Image")
                         if img_id:
                             used_image_ids.add(img_id)
                     
-                    # Filter to unused images only
                     unused_images = [img for img in all_images if img.id not in used_image_ids]
                     images_list = [
                         {
@@ -928,31 +864,25 @@ def get_prune_preview() -> dict:
                         for img in unused_images
                     ]
                 except Exception as e:
-                    log(f"[{host_name}] Error listing images: {e}")
+                    log(f"[{host_name}] 列出镜像时出错: {e}")
             
-            # Preview networks (unused networks, excluding default ones)
             if config.get("prune_networks"):
                 try:
                     networks = client.networks.list()
                     unused_networks = []
                     
-                    # Get list of network IDs used by running containers
                     running_network_ids = set()
                     for container in client.containers.list(filters={"status": "running"}):
-                        # Get network settings from container
                         network_settings = container.attrs.get("NetworkSettings", {}).get("Networks", {})
                         for net_name, net_info in network_settings.items():
                             if net_info.get("NetworkID"):
                                 running_network_ids.add(net_info["NetworkID"])
                     
                     for net in networks:
-                        # Skip default networks
                         if net.name in ["bridge", "host", "none"]:
                             continue
-                        # Skip networks connected to running containers
                         if net.id in running_network_ids:
                             continue
-                        # This network is unused and can be pruned
                         unused_networks.append(net)
                     
                     networks_list = [
@@ -960,15 +890,12 @@ def get_prune_preview() -> dict:
                         for net in unused_networks
                     ]
                 except Exception as e:
-                    log(f"[{host_name}] Error listing networks: {e}")
+                    log(f"[{host_name}] 列出网络时出错: {e}")
             
-            # Preview volumes (unused volumes)
             if config.get("prune_volumes"):
                 try:
-                    # Get all volumes (can be None in some Docker versions)
                     all_volumes_result = client.volumes.list()
                     all_volumes = all_volumes_result if all_volumes_result else []
-                    # Get volumes in use by containers
                     used_volume_names = set()
                     for container in client.containers.list(all=True):
                         for mount in container.attrs.get("Mounts", []):
@@ -981,34 +908,24 @@ def get_prune_preview() -> dict:
                         for v in unused_volumes
                     ]
                 except Exception as e:
-                    log(f"[{host_name}] Error listing volumes: {e}")
+                    log(f"[{host_name}] 列出卷时出错: {e}")
             
-            # Preview build cache
             if config.get("prune_build_cache"):
                 try:
-                    # Get build cache usage via Docker API
-                    # We need to do a DRY RUN of the prune operation to see what would be deleted
-                    # because client.api.df() may return cached/stale data
-                    
-                    # Option 1: Use df() but be aware it might show stale data
                     df_result = client.api.df()
                     build_cache_info = df_result.get("BuildCache", [])
                     
-                    # Filter to truly reclaimable entries
-                    # The Reclaimable field is the most accurate indicator
                     reclaimable_cache = []
                     for c in build_cache_info:
-                        # Prioritize Reclaimable field if present (most accurate)
                         if "Reclaimable" in c:
                             if c["Reclaimable"]:
                                 reclaimable_cache.append(c)
-                        # Fallback: use InUse field
                         elif not c.get("InUse", False):
                             reclaimable_cache.append(c)
                     
                     build_cache_list = [
                         {
-                            "id": c.get("ID", "")[:12],  # Short ID like Docker CLI
+                            "id": c.get("ID", "")[:12],
                             "type": c.get("Type", "unknown"),
                             "size": human_bytes(c.get("Size", 0)),
                             "reclaimable": c.get("Reclaimable", True),
@@ -1017,11 +934,10 @@ def get_prune_preview() -> dict:
                         for c in reclaimable_cache
                     ]
                     
-                    # Log for debugging
                     if build_cache_list:
-                        log(f"[{host_name}] Preview found {len(build_cache_list)} reclaimable build cache entries")
+                        log(f"[{host_name}] 预览发现 {len(build_cache_list)} 个可回收的构建缓存条目")
                 except Exception as e:
-                    log(f"[{host_name}] Error listing build cache: {e}")
+                    log(f"[{host_name}] 列出构建缓存时出错: {e}")
             
             total_containers += len(containers_list)
             total_images += len(images_list)
@@ -1048,7 +964,7 @@ def get_prune_preview() -> dict:
             })
             
         except Exception as e:
-            log(f"[{host_name}] Error getting preview: {e}")
+            log(f"[{host_name}] 获取预览时出错: {e}")
             preview_results.append({
                 "name": host_name,
                 "url": host_url,
@@ -1080,36 +996,34 @@ def get_prune_preview() -> dict:
 
 
 def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
-    """Execute Docker pruning based on current configuration."""
-    # Ensure we have the latest config before running prune job
+    """执行Docker清理任务"""
     load_config(silent=True)
     
     lock = FileLock(str(LOCK_FILE))
     acquired = False
     try:
         if wait:
-            # Try fast path first
             try:
                 lock.acquire(timeout=0)
                 acquired = True
-                log(f"{origin.capitalize()} trigger: acquired prune lock.")
+                log(f"{origin.capitalize()} 触发: 已获取清理锁。")
             except Timeout:
-                log(f"{origin.capitalize()} trigger: waiting for any running prune to finish…")
+                log(f"{origin.capitalize()} 触发: 等待正在运行的清理任务完成…")
                 try:
                     lock.acquire(timeout=300)
                     acquired = True
                 except Timeout:
-                    log(f"{origin.capitalize()} trigger: waited 300s; skipping run.")
+                    log(f"{origin.capitalize()} 触发: 已等待300秒; 跳过本次运行。")
                     return False
         else:
             try:
                 lock.acquire(timeout=0)
                 acquired = True
             except Timeout:
-                log(f"{origin.capitalize()} trigger: prune already in progress; skipping.")
+                log(f"{origin.capitalize()} 触发: 清理任务已在进行中; 跳过本次运行。")
                 return False
 
-        log("Starting prune job with configuration:")
+        log("开始清理任务，配置如下:")
         log(str(_redact_for_log(effective_config())))
 
         if not any([
@@ -1119,29 +1033,25 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
             config.get("prune_volumes"),
             config.get("prune_build_cache"),
         ]):
-            log("No prune options selected. Job skipped.")
+            log("未选择任何清理选项。任务跳过。")
             return False
 
         if docker is None:
-            log("Docker SDK not available; aborting prune.")
+            log("Docker SDK不可用; 终止清理任务。")
             return False
 
-        # Always include local Docker socket + external hosts from config
         docker_hosts = config.get("docker_hosts", [])
-        # Filter out any 'Local' entries from config to prevent duplicates
         enabled_external_hosts = [
             h for h in docker_hosts 
             if h.get("enabled", True) and h.get("name") != "Local" and "unix://" not in h.get("url", "")
         ]
         
-        # Build complete host list: local socket first, then external hosts
         all_hosts = [
-            {"name": "Local", "url": "unix:///var/run/docker.sock", "enabled": True}
+            {"name": "本地", "url": "unix:///var/run/docker.sock", "enabled": True}
         ] + enabled_external_hosts
         
-        log(f"Processing {len(all_hosts)} host(s) (1 local + {len(enabled_external_hosts)} external)...")
+        log(f"处理 {len(all_hosts)} 个主机 (1个本地 + {len(enabled_external_hosts)} 个外部)...")
         
-        # Aggregate totals across all hosts
         total_containers_deleted = 0
         total_images_deleted = 0
         total_networks_deleted = 0
@@ -1149,25 +1059,24 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
         total_build_cache_deleted = 0
         total_space_reclaimed = 0
         
-        # Per-host results for detailed reporting
         host_results = []
         
         for host in all_hosts:
-            host_name = host.get("name", "Unnamed")
+            host_name = host.get("name", "未命名")
             host_url = host.get("url", "unix:///var/run/docker.sock")
             
-            log(f"--- Processing host: {host_name} ({host_url}) ---")
+            log(f"--- 处理主机: {host_name} ({host_url}) ---")
             
             client = None
             try:
                 client = create_docker_client(host_url)
                 if client is None:
-                    log(f"Failed to connect to {host_name}; skipping this host.")
+                    log(f"无法连接到 {host_name}; 跳过此主机。")
                     host_results.append({
                         "name": host_name,
                         "url": host_url,
                         "success": False,
-                        "error": "Failed to connect",
+                        "error": "连接失败",
                         "containers": 0,
                         "images": 0,
                         "networks": 0,
@@ -1180,70 +1089,60 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
                 containers_deleted = images_deleted = networks_deleted = volumes_deleted = build_cache_deleted = 0
                 space_reclaimed = 0
 
-                # Containers
                 if config.get("prune_containers"):
                     try:
-                        log(f"[{host_name}] Pruning containers…")
+                        log(f"[{host_name}] 清理容器…")
                         r = client.containers.prune()
-                        log(f"[{host_name}] Containers prune result: {r}")
+                        log(f"[{host_name}] 容器清理结果: {r}")
                         containers_deleted = len(r.get("ContainersDeleted") or [])
                         space_reclaimed += int(r.get("SpaceReclaimed") or 0)
                     except Exception as e:
-                        log(f"[{host_name}] Error pruning containers: {e}")
+                        log(f"[{host_name}] 清理容器时出错: {e}")
 
-                # Images
                 if config.get("prune_images"):
                     try:
-                        log(f"[{host_name}] Pruning images (all unused)…")
+                        log(f"[{host_name}] 清理所有未使用的镜像…")
                         r = client.images.prune(filters={"dangling": False})
-                        log(f"[{host_name}] Images prune result: {r}")
+                        log(f"[{host_name}] 镜像清理结果: {r}")
                         deleted_list = r.get("ImagesDeleted") or []
                         images_deleted = len(deleted_list)
                         space_reclaimed += int(r.get("SpaceReclaimed") or 0)
                     except Exception as e:
-                        log(f"[{host_name}] Error pruning images: {e}")
+                        log(f"[{host_name}] 清理镜像时出错: {e}")
 
-                # Networks
                 if config.get("prune_networks"):
                     try:
-                        log(f"[{host_name}] Pruning networks…")
+                        log(f"[{host_name}] 清理网络…")
                         r = client.networks.prune()
-                        log(f"[{host_name}] Networks prune result: {r}")
+                        log(f"[{host_name}] 网络清理结果: {r}")
                         networks_deleted = len(r.get("NetworksDeleted") or [])
                     except Exception as e:
-                        log(f"[{host_name}] Error pruning networks: {e}")
+                        log(f"[{host_name}] 清理网络时出错: {e}")
 
-                # Volumes
                 if config.get("prune_volumes"):
                     try:
-                        log(f"[{host_name}] Pruning volumes (all unused, including named)…")
+                        log(f"[{host_name}] 清理所有未使用的卷（包括命名卷）…")
                         r = client.volumes.prune(filters={"all": True})
-                        log(f"[{host_name}] Volumes prune result: {r}")
-                        # VolumesDeleted is a list of volume names (strings), not dicts
+                        log(f"[{host_name}] 卷清理结果: {r}")
                         volumes_deleted_list = r.get("VolumesDeleted") or []
                         volumes_deleted = len(volumes_deleted_list) if volumes_deleted_list else 0
                         space_reclaimed += int(r.get("SpaceReclaimed") or 0)
                     except Exception as e:
-                        log(f"[{host_name}] Error pruning volumes: {e}")
+                        log(f"[{host_name}] 清理卷时出错: {e}")
 
-                # Build Cache
                 if config.get("prune_build_cache"):
                     try:
-                        log(f"[{host_name}] Pruning build cache…")
-                        # Use the API client directly for builder prune
-                        # Docker API endpoint: POST /build/prune
+                        log(f"[{host_name}] 清理构建缓存…")
                         r = client.api.prune_builds()
-                        log(f"[{host_name}] Build cache prune result: {r}")
-                        # Count the number of cache objects deleted
+                        log(f"[{host_name}] 构建缓存清理结果: {r}")
                         cache_ids_deleted = r.get("CachesDeleted") or []
                         build_cache_deleted = len(cache_ids_deleted) if cache_ids_deleted else 0
                         space_reclaimed += int(r.get("SpaceReclaimed") or 0)
                     except Exception as e:
-                        log(f"[{host_name}] Error pruning build cache: {e}")
+                        log(f"[{host_name}] 清理构建缓存时出错: {e}")
 
-                log(f"[{host_name}] Prune completed: containers={containers_deleted}, images={images_deleted}, networks={networks_deleted}, volumes={volumes_deleted}, build_cache={build_cache_deleted}, space={human_bytes(space_reclaimed)}")
+                log(f"[{host_name}] 清理完成: 容器={containers_deleted}, 镜像={images_deleted}, 网络={networks_deleted}, 卷={volumes_deleted}, 构建缓存={build_cache_deleted}, 空间={human_bytes(space_reclaimed)}")
                 
-                # Add to totals
                 total_containers_deleted += containers_deleted
                 total_images_deleted += images_deleted
                 total_networks_deleted += networks_deleted
@@ -1251,7 +1150,6 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
                 total_build_cache_deleted += build_cache_deleted
                 total_space_reclaimed += space_reclaimed
                 
-                # Record host result
                 host_results.append({
                     "name": host_name,
                     "url": host_url,
@@ -1265,7 +1163,7 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
                 })
                 
             except Exception as e:
-                log(f"[{host_name}] Unexpected error during prune: {e}")
+                log(f"[{host_name}] 清理过程中出现意外错误: {e}")
                 host_results.append({
                     "name": host_name,
                     "url": host_url,
@@ -1285,14 +1183,13 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
                     except Exception:
                         pass
 
-        log("Prune job finished for all hosts.")
+        log("所有主机的清理任务已完成。")
 
         anything_deleted = any([
             total_containers_deleted, total_images_deleted, total_networks_deleted,
             total_volumes_deleted, total_build_cache_deleted, total_space_reclaimed > 0
         ])
 
-        # Update all-time statistics (always, even if nothing was pruned)
         update_stats(
             containers=total_containers_deleted,
             images=total_images_deleted,
@@ -1302,20 +1199,17 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
             space=total_space_reclaimed
         )
 
-        # Respect only_on_changes for notifications
         if not anything_deleted and config.get("notifications", {}).get("only_on_changes", True):
-            log("Nothing was pruned; skipping notification.")
+            log("未清理任何资源; 跳过通知。")
             return True
 
-        # Build notification summary with per-host breakdown
         summary_lines = [
             f"📅 {describe_schedule()}",
             "",
         ]
         
-        # Add per-host details
         if len(all_hosts) > 1:
-            summary_lines.append("📊 Per-host results:")
+            summary_lines.append("📊 按主机统计结果:")
         
         for result in host_results:
             if result.get("success"):
@@ -1324,47 +1218,46 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
                 if has_deletions:
                     summary_lines.append(f"• {result['name']}")
                     if result.get('containers'):
-                        summary_lines.append(f"  - 🗑️ {result['containers']} containers")
+                        summary_lines.append(f"  - 🗑️ {result['containers']} 个容器")
                     if result.get('images'):
-                        summary_lines.append(f"  - 💿 {result['images']} images")
+                        summary_lines.append(f"  - 💿 {result['images']} 个镜像")
                     if result.get('networks'):
-                        summary_lines.append(f"  - 🌐 {result['networks']} networks")
+                        summary_lines.append(f"  - 🌐 {result['networks']} 个网络")
                     if result.get('volumes'):
-                        summary_lines.append(f"  - 📦 {result['volumes']} volumes")
+                        summary_lines.append(f"  - 📦 {result['volumes']} 个卷")
                     if result.get('build_cache'):
-                        summary_lines.append(f"  - 🏗️ {result['build_cache']} build caches")
+                        summary_lines.append(f"  - 🏗️ {result['build_cache']} 个构建缓存")
                     if result['space']:
-                        summary_lines.append(f"  - 💾 {human_bytes(result['space'])} reclaimed")
+                        summary_lines.append(f"  - 💾 回收空间 {human_bytes(result['space'])}")
                 else:
-                    summary_lines.append(f"• {result['name']}: ✅ Nothing to prune")
+                    summary_lines.append(f"• {result['name']}: ✅ 无资源需要清理")
             else:
-                summary_lines.append(f"• {result['name']}: ❌ {result.get('error', 'Unknown error')}")
+                summary_lines.append(f"• {result['name']}: ❌ {result.get('error', '未知错误')}")
         
         if len(all_hosts) > 1:
             summary_lines.append("")
         
-        # Add totals
         if len(all_hosts) > 1:
-            summary_lines.append("📈 Total across all hosts:")
+            summary_lines.append("📈 所有主机总计:")
         if anything_deleted:
             if total_containers_deleted:
-                summary_lines.append(f"  - 🗑️ Containers: {total_containers_deleted}")
+                summary_lines.append(f"  - 🗑️ 容器: {total_containers_deleted}")
             if total_images_deleted:
-                summary_lines.append(f"  - 💿 Images: {total_images_deleted}")
+                summary_lines.append(f"  - 💿 镜像: {total_images_deleted}")
             if total_networks_deleted:
-                summary_lines.append(f"  - 🌐 Networks: {total_networks_deleted}")
+                summary_lines.append(f"  - 🌐 网络: {total_networks_deleted}")
             if total_volumes_deleted:
-                summary_lines.append(f"  - 📦 Volumes: {total_volumes_deleted}")
+                summary_lines.append(f"  - 📦 卷: {total_volumes_deleted}")
             if total_build_cache_deleted:
-                summary_lines.append(f"  - 🏗️ Build caches: {total_build_cache_deleted}")
+                summary_lines.append(f"  - 🏗️ 构建缓存: {total_build_cache_deleted}")
             if total_space_reclaimed:
-                summary_lines.append(f"  - 💾 Space reclaimed: {human_bytes(total_space_reclaimed)}")
+                summary_lines.append(f"  - 💾 回收空间: {human_bytes(total_space_reclaimed)}")
         else:
-            summary_lines.append("✅ Nothing to prune this run")
+            summary_lines.append("✅ 本次运行无资源需要清理")
 
         message = "\n".join(summary_lines)
         notif_priority = config.get("notifications", {}).get("priority", "medium")
-        send_notification("PruneMate run completed", message, priority=notif_priority)
+        send_notification("PruneMate 清理完成", message, priority=notif_priority)
         
         return True
     
@@ -1377,11 +1270,7 @@ def run_prune_job(origin: str = "unknown", wait: bool = False) -> bool:
 
 
 def compute_run_key(now: datetime.datetime) -> str:
-    """Generate a unique key for the current scheduled run.
-    
-    Includes the configured time so changing the schedule time allows a new run
-    on the same day/week/month.
-    """
+    """为当前计划任务生成唯一键"""
     freq = config.get("frequency", "daily")
     time_str = config.get("time", "03:00")
     date_str = now.date().isoformat()
@@ -1397,16 +1286,9 @@ def compute_run_key(now: datetime.datetime) -> str:
 
 
 def check_and_run_scheduled_job():
-    """Check if current time matches the configured schedule and trigger prune.
-    
-    Uses a file-based 'last run key' so the same period is not executed twice
-    across multiple processes. If another worker already ran the job for the
-    current key, this instance will skip.
-    """
-    # Always reload config to ensure we have the latest schedule across workers
+    """检查是否到达计划清理时间并执行清理"""
     load_config(silent=True)
     
-    # Check if schedule is enabled
     if not config.get("schedule_enabled", True):
         return
     
@@ -1436,7 +1318,6 @@ def check_and_run_scheduled_job():
         except Exception:
             dom_cfg = 1
         dom_cfg = max(1, min(31, dom_cfg))
-        # Handle months with fewer days: run on last day if configured day doesn't exist
         _, last_day = calendar.monthrange(now.year, now.month)
         actual_dom = min(dom_cfg, last_day)
         if now.day == actual_dom and hour_now == hour_cfg and minute_now == minute_cfg:
@@ -1446,59 +1327,51 @@ def check_and_run_scheduled_job():
         return
 
     key = compute_run_key(now)
-    # First check in-memory cache
     if last_run_key["value"] == key:
-        log(f"Scheduled job skipped: already ran for key '{key}' (in-memory check)")
+        log(f"计划任务已跳过: 已为键 '{key}' 执行过（内存检查）")
         return
-    # Cross-process read
     disk_key = _read_last_run_key()
     if disk_key == key:
         last_run_key["value"] = key
-        log(f"Scheduled job skipped: already ran for key '{key}' (disk check)")
+        log(f"计划任务已跳过: 已为键 '{key}' 执行过（磁盘检查）")
         return
 
-    log(f"Scheduled time reached ({freq}) at {hour_now:02d}:{minute_now:02d}, running prune.")
-    # Mark as ran (best-effort) before execution to avoid duplicate triggers
+    log(f"到达计划时间 ({freq}) 在 {hour_now:02d}:{minute_now:02d}，执行清理。")
     last_run_key["value"] = key
     _write_last_run_key(key)
     ran = run_prune_job(origin="scheduled", wait=False)
     if not ran:
-        # If job skipped due to lock, keep the key set to avoid stampeding
         pass
 
 
 def heartbeat():
-    """Periodic heartbeat function that checks for scheduled jobs."""
-    log("Heartbeat: scheduler is alive.")
+    """心跳函数，每分钟检查一次计划任务"""
+    log("心跳: 调度器运行正常。")
     check_and_run_scheduled_job()
 
 
-# ---- Authentication Logic ----
+# ---- 认证逻辑 ----
 def is_auth_enabled():
-    """Check if authentication is enabled via environment variables."""
-    # Only enabled if hash is present
+    """检查是否启用了身份验证"""
     return bool(os.environ.get("PRUNEMATE_AUTH_PASSWORD_HASH"))
 
 
 def check_auth(username, password):
-    """Verify username and password against environment variables."""
+    """验证用户名和密码"""
     expected_user = os.environ.get("PRUNEMATE_AUTH_USER", "admin")
     password_hash = os.environ.get("PRUNEMATE_AUTH_PASSWORD_HASH")
 
     if not password_hash:
         return False
 
-    # Check username
     if username != expected_user:
         return False
 
-    # Handle Base64 encoded hashes
     try:
         password_hash = base64.b64decode(password_hash).decode("utf-8")
     except Exception:
         pass
     
-    # Check password hash
     try:
         return check_password_hash(password_hash, password)
     except Exception:
@@ -1506,54 +1379,44 @@ def check_auth(username, password):
 
 
 def request_wants_json():
-    """Check if client wants JSON response."""
+    """检查客户端是否需要JSON响应"""
     best = request.accept_mimetypes.best_match(['application/json', 'text/html'])
     return best == 'application/json' and request.accept_mimetypes[best] > request.accept_mimetypes['text/html']
 
 
 @app.before_request
 def require_auth():
-    """Intercept requests and ensure user is authenticated."""
+    """请求前检查身份验证"""
     if not is_auth_enabled():
         return
 
-    # Allow static resources, login page, and stats endpoints
     if request.endpoint in ('static', 'login', 'logout', 'stats', 'api_stats'):
         return
 
-    # Check if user is logged in via session
     if session.get('logged_in'):
         return
 
-    # API/CLI Clients (Basic Auth) or JSON requests
-    # If Authorization header is present, try Basic Auth
     auth = request.authorization
     if auth:
         if check_auth(auth.username, auth.password):
-            # Session-less auth for API
             return
     
-    # If we are here, auth failed or is missing
-    
-    # For API/Robots: Return 401 Basic Auth challenge
-    # Detect if it's likely an API client (User-Agent or Accept header)
     ua = request.user_agent.string.lower()
     is_browser = any(x in ua for x in ['mozilla', 'chrome', 'safari', 'edge']) and 'curl' not in ua and 'python' not in ua
     
     if not is_browser or request_wants_json() or request.path.startswith('/api/'):
         return Response(
-            'Could not verify your access level for that URL.\n'
-            'You have to login with proper credentials', 401,
-            {'WWW-Authenticate': 'Basic realm="PruneMate Login"'}
+            '无法验证您的访问权限。\n'
+            '您需要使用正确的凭据登录。', 401,
+            {'WWW-Authenticate': 'Basic realm="PruneMate 登录"'}
         )
     
-    # For Browsers: Redirect to login page
     return redirect(url_for('login'))
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    """Handle login page and authentication."""
+    """登录页面处理"""
     if session.get('logged_in'):
         return redirect(url_for('index'))
 
@@ -1568,61 +1431,53 @@ def login():
             session['logged_in'] = True
             session['user'] = username
             
-            # Use a safe next URL or default to index
             next_url = request.args.get('next')
             if not next_url or next_url.startswith('//') or ':' in next_url:
                 next_url = url_for('index')
             
             return redirect(next_url)
         else:
-            flash("Invalid credentials", "error")
+            flash("无效的凭据", "error")
             
     return render_template("login.html")
 
 
 @app.route("/logout")
 def logout():
-    """Clear session and redirect to login."""
+    """登出处理"""
     session.clear()
     return redirect(url_for("login"))
 
 
-
 @app.route("/")
 def index():
-    """Render the main configuration page."""
-    # Reload config to ensure we show the latest settings across workers
+    """主页配置页面"""
     load_config(silent=True)
     return render_template("index.html", config=config, timezone=tz_name, config_path=CONFIG_PATH, use_24h=use_24h_format)
 
 
 @app.route("/update", methods=["POST"])
 def update():
-    """Handle configuration updates from the web form."""
-    # Reload config to get the latest state before applying changes
+    """处理配置更新"""
     load_config(silent=True)
     old_config = json.loads(json.dumps(config))
 
     frequency = request.form.get("frequency", "daily")
     
-    # Handle both 24h and 12h time formats
     if use_24h_format:
         time_value = request.form.get("time", "03:00")
     else:
-        # Convert 12h format (hour, minute, period) to 24h format
         try:
             hour_12 = int(request.form.get("time_hour", "3"))
             minute = int(request.form.get("time_minute", "0"))
             period = request.form.get("time_period", "AM")
             
-            # Validate ranges
             hour_12 = max(1, min(12, hour_12))
             minute = max(0, min(59, minute))
             
-            # Convert to 24h
             if period == "AM":
                 hour_24 = 0 if hour_12 == 12 else hour_12
-            else:  # PM
+            else:
                 hour_24 = 12 if hour_12 == 12 else hour_12 + 12
             
             time_value = f"{hour_24:02d}:{minute:02d}"
@@ -1631,7 +1486,6 @@ def update():
     
     day_of_week = request.form.get("day_of_week", "mon")
     raw_dom = request.form.get("day_of_month", "1")
-    # Sanitize day-of-month (1..31)
     try:
         day_of_month = int(raw_dom)
     except Exception:
@@ -1658,13 +1512,11 @@ def update():
     telegram_enabled = "telegram_enabled" in request.form
     telegram_bot_token = (request.form.get("telegram_bot_token") or "").strip()
     telegram_chat_id = (request.form.get("telegram_chat_id") or "").strip()
-    # Parse notification priority (low/medium/high, default 'medium')
     notification_priority = request.form.get("notification_priority", "medium").strip().lower()
     if notification_priority not in ["low", "medium", "high"]:
         notification_priority = "medium"
     only_on_changes = "notifications_only_on_changes" in request.form
 
-    # Auto-enable selected provider if fields are filled but toggle was forgotten
     if provider == "gotify" and not gotify_enabled and gotify_url and gotify_token:
         gotify_enabled = True
     if provider == "ntfy" and not ntfy_enabled and ntfy_url and ntfy_topic:
@@ -1705,31 +1557,28 @@ def update():
     schedule_changed = any(new_values[k] != old_config.get(k) for k in schedule_keys)
     config.update(new_values)
     if schedule_changed:
-        # Clear last-run key so the next scheduled window can fire
         _clear_last_run_key()
 
     save_config()
-    flash("Configuration updated.", "success")
+    flash("配置已更新。", "success")
     return redirect(url_for("index"))
 
 
 @app.route("/run-now", methods=["POST"])
 def run_now():
-    """Trigger an immediate manual prune job."""
-    # Reload config to use the latest prune settings
+    """立即执行清理"""
     load_config(silent=True)
-    log("Manual run trigger received.")
+    log("手动清理触发已收到。")
     ran = run_prune_job(origin="manual", wait=True)
-    flash("Prune job executed manually." if ran else "Prune job skipped (busy or timeout).", "info")
+    flash("手动清理已执行。" if ran else "清理任务跳过（忙或超时）。", "info")
     return redirect(url_for("index"))
 
 
 @app.route("/preview-prune", methods=["POST"])
 def preview_prune():
-    """Get a preview of what would be pruned without executing."""
+    """获取清理预览"""
     load_config(silent=True)
     
-    # Save current prune settings from request body (if provided)
     try:
         data = request.get_json() or {}
         if any(k in data for k in ["prune_containers", "prune_images", "prune_networks", "prune_volumes", "prune_build_cache"]):
@@ -1739,21 +1588,20 @@ def preview_prune():
             config["prune_volumes"] = data.get("prune_volumes", False)
             config["prune_build_cache"] = data.get("prune_build_cache", False)
             save_config()
-            log("Preview requested with updated prune settings saved.")
+            log("清理预览请求已收到并保存更新后的配置。")
     except Exception as e:
-        log(f"Error parsing preview request body: {e}")
+        log(f"解析清理预览请求体时出错: {e}")
     
-    log("Prune preview requested.")
+    log("清理预览请求已收到。")
     preview = get_prune_preview()
     return jsonify(preview)
 
 
 @app.route("/run-confirmed", methods=["POST"])
 def run_confirmed():
-    """Execute prune after user has seen and confirmed the preview."""
+    """确认后执行清理"""
     load_config(silent=True)
     
-    # Ensure latest prune settings are saved (should be saved by preview, but double-check)
     try:
         data = request.get_json() or {}
         if any(k in data for k in ["prune_containers", "prune_images", "prune_networks", "prune_volumes", "prune_build_cache"]):
@@ -1763,45 +1611,40 @@ def run_confirmed():
             config["prune_volumes"] = data.get("prune_volumes", False)
             config["prune_build_cache"] = data.get("prune_build_cache", False)
             save_config()
-            log("Confirmed run with updated prune settings saved.")
+            log("确认清理触发已收到并保存更新后的配置。")
     except Exception as e:
-        log(f"Error parsing confirmed run request body: {e}")
+        log(f"解析确认清理请求体时出错: {e}")
     
-    log("Confirmed manual run trigger received.")
+    log("确认手动清理触发已收到。")
     ran = run_prune_job(origin="manual", wait=True)
     return jsonify({
         "success": ran,
-        "message": "Prune job executed successfully." if ran else "Prune job skipped (busy or timeout)."
+        "message": "清理任务已成功执行。" if ran else "清理任务跳过（忙或超时）。"
     })
 
 
 @app.route("/test-notification", methods=["POST"])
 def test_notification():
-    """Save configuration and send a test notification."""
-    # First save the config with the current form data, then test notification
+    """发送测试通知"""
     load_config(silent=True)
     old_config = json.loads(json.dumps(config))
 
     frequency = request.form.get("frequency", "daily")
     
-    # Handle both 24h and 12h time formats
     if use_24h_format:
         time_value = request.form.get("time", "03:00")
     else:
-        # Convert 12h format (hour, minute, period) to 24h format
         try:
             hour_12 = int(request.form.get("time_hour", "3"))
             minute = int(request.form.get("time_minute", "0"))
             period = request.form.get("time_period", "AM")
             
-            # Validate ranges
             hour_12 = max(1, min(12, hour_12))
             minute = max(0, min(59, minute))
             
-            # Convert to 24h
             if period == "AM":
                 hour_24 = 0 if hour_12 == 12 else hour_12
-            else:  # PM
+            else:
                 hour_24 = 12 if hour_12 == 12 else hour_12 + 12
             
             time_value = f"{hour_24:02d}:{minute:02d}"
@@ -1835,13 +1678,11 @@ def test_notification():
     telegram_enabled = "telegram_enabled" in request.form
     telegram_bot_token = (request.form.get("telegram_bot_token") or "").strip()
     telegram_chat_id = (request.form.get("telegram_chat_id") or "").strip()
-    # Parse notification priority (low/medium/high, default 'medium')
     notification_priority = request.form.get("notification_priority", "medium").strip().lower()
     if notification_priority not in ["low", "medium", "high"]:
         notification_priority = "medium"
     only_on_changes = "notifications_only_on_changes" in request.form
 
-    # Auto-enable selected provider if fields are filled but toggle was forgotten
     if provider == "gotify" and not gotify_enabled and gotify_url and gotify_token:
         gotify_enabled = True
     if provider == "ntfy" and not ntfy_enabled and ntfy_url and ntfy_topic:
@@ -1885,64 +1726,58 @@ def test_notification():
 
     save_config()
     
-    # Test the notification with the saved config
-    log("Notification test requested from UI.")
-    # Use configured priority for test notification
+    log("从UI请求通知测试。")
     test_priority = config.get("notifications", {}).get("priority", "medium")
     ok = send_notification(
-        "PruneMate test notification",
-        "This is a test message from PruneMate.\n\nIf you see this, your current provider settings are working.",
+        "PruneMate 测试通知",
+        "这是来自 PruneMate 的测试消息。\n\n如果您看到此消息，说明您的通知提供商配置工作正常。",
         priority=test_priority,
     )
-    flash("Configuration saved. " + ("Test notification sent." if ok else "Test notification failed (check settings & logs)."), "info")
+    flash("配置已保存。 " + ("测试通知已发送。" if ok else "测试通知发送失败（请检查设置和日志）。"), "info")
     return redirect(url_for("index"))
 
 
 @app.route("/stats")
 def stats():
-    """Return all-time statistics as JSON."""
+    """返回历史统计数据"""
     return jsonify(load_stats())
 
 
 @app.route("/api/stats")
 def api_stats():
-    """Return formatted statistics for Homepage dashboard widget."""
+    """返回格式化的统计数据"""
     stats = load_stats()
     
-    # Calculate relative time for last run
-    last_run_text = "Never"
+    last_run_text = "从未"
     last_run_timestamp = None
     if stats.get("last_run"):
         try:
             last_run_dt = datetime.datetime.fromisoformat(stats["last_run"])
             now = datetime.datetime.now(app_timezone)
             
-            # Convert both to timezone-aware if needed
             if last_run_dt.tzinfo is None:
                 last_run_dt = last_run_dt.replace(tzinfo=app_timezone)
             
             delta = now - last_run_dt
             
-            # Format relative time
             if delta.days > 0:
-                last_run_text = f"{delta.days}d ago"
+                last_run_text = f"{delta.days}天前"
             elif delta.seconds >= 3600:
                 hours = delta.seconds // 3600
-                last_run_text = f"{hours}h ago"
+                last_run_text = f"{hours}小时前"
             elif delta.seconds >= 60:
                 minutes = delta.seconds // 60
-                last_run_text = f"{minutes}m ago"
+                last_run_text = f"{minutes}分钟前"
             else:
-                last_run_text = "Just now"
+                last_run_text = "刚刚"
             
-            # Provide timestamp in seconds for format: relativeTime
             last_run_timestamp = int(last_run_dt.timestamp())
         except (ValueError, TypeError, OSError) as e:
-            log(f"Error parsing last_run timestamp: {e}")
-            last_run_text = "Unknown"
+            log(f"解析上次运行时间戳时出错: {e}")
+            last_run_text = "未知"
         except Exception as e:
-            log(f"Unexpected error in /api/stats timestamp calculation: {e}")
-            last_run_text = "Unknown"
+            log(f"/api/stats 时间戳计算中出现意外错误: {e}")
+            last_run_text = "未知"
     
     return jsonify({
         "pruneRuns": stats.get("prune_runs", 0),
@@ -1962,14 +1797,12 @@ def api_stats():
 
 @app.route("/hosts")
 def list_hosts():
-    """Return list of Docker hosts as JSON (includes Local socket for display)."""
+    """返回Docker主机列表"""
     load_config(silent=True)
     external_hosts = config.get("docker_hosts", [])
     
-    # Include Local host at the beginning for consistency with run_prune_job()
-    # Frontend will filter it out for display, but it provides accurate count
     all_hosts = [
-        {"name": "Local", "url": "unix:///var/run/docker.sock", "enabled": True}
+        {"name": "本地", "url": "unix:///var/run/docker.sock", "enabled": True}
     ] + external_hosts
     
     return jsonify({"hosts": all_hosts})
@@ -1977,7 +1810,7 @@ def list_hosts():
 
 @app.route("/hosts/add", methods=["POST"])
 def add_host():
-    """Add a new Docker host."""
+    """添加新的Docker主机"""
     load_config(silent=True)
     
     name = (request.form.get("name") or "").strip()
@@ -1985,13 +1818,12 @@ def add_host():
     enabled = "enabled" in request.form
     
     if not name or not url:
-        flash("Host name and URL are required.", "warn")
+        flash("主机名称和URL是必填项。", "warn")
         return redirect(url_for("index"))
     
-    # Validate URL format
     valid_protocols = ["tcp://", "http://", "https://"]
     if not any(url.startswith(proto) for proto in valid_protocols):
-        flash("URL must start with tcp://, http://, or https://", "warn")
+        flash("URL必须以 tcp://, http://, 或 https:// 开头", "warn")
         return redirect(url_for("index"))
     
     new_host = {
@@ -2006,18 +1838,18 @@ def add_host():
     config["docker_hosts"].append(new_host)
     save_config()
     
-    flash(f"Docker host '{name}' added successfully.", "info")
+    flash(f"Docker主机 '{name}' 添加成功。", "info")
     return redirect(url_for("index"))
 
 
 @app.route("/hosts/<int:index>/update", methods=["POST"])
 def update_host(index):
-    """Update an existing Docker host."""
+    """更新现有的Docker主机"""
     load_config(silent=True)
     
     hosts = config.get("docker_hosts", [])
     if index < 0 or index >= len(hosts):
-        flash("Invalid host index.", "warn")
+        flash("无效的主机索引。", "warn")
         return redirect(url_for("index"))
     
     name = (request.form.get("name") or "").strip()
@@ -2025,13 +1857,12 @@ def update_host(index):
     enabled = "enabled" in request.form
     
     if not name or not url:
-        flash("Host name and URL are required.", "warn")
+        flash("主机名称和URL是必填项。", "warn")
         return redirect(url_for("index"))
     
-    # Validate URL format
     valid_protocols = ["tcp://", "http://", "https://"]
     if not any(url.startswith(proto) for proto in valid_protocols):
-        flash("URL must start with tcp://, http://, or https://", "warn")
+        flash("URL必须以 tcp://, http://, 或 https:// 开头", "warn")
         return redirect(url_for("index"))
     
     hosts[index] = {
@@ -2043,79 +1874,77 @@ def update_host(index):
     config["docker_hosts"] = hosts
     save_config()
     
-    flash(f"Docker host '{name}' updated successfully.", "info")
+    flash(f"Docker主机 '{name}' 更新成功。", "info")
     return redirect(url_for("index"))
 
 
 @app.route("/hosts/<int:index>/delete", methods=["POST"])
 def delete_host(index):
-    """Delete a Docker host."""
+    """删除Docker主机"""
     load_config(silent=True)
     
     hosts = config.get("docker_hosts", [])
     if index < 0 or index >= len(hosts):
-        flash("Invalid host index.", "warn")
+        flash("无效的主机索引。", "warn")
         return redirect(url_for("index"))
     
-    # Note: It's safe to delete all external hosts - Local is always available at runtime
-    deleted_name = hosts[index].get("name", "Unknown")
+    deleted_name = hosts[index].get("name", "未知")
     del hosts[index]
     
     config["docker_hosts"] = hosts
     save_config()
     
-    flash(f"Docker host '{deleted_name}' deleted successfully.", "info")
+    flash(f"Docker主机 '{deleted_name}' 删除成功。", "info")
     return redirect(url_for("index"))
 
 
 @app.route("/hosts/<int:index>/toggle", methods=["POST"])
 def toggle_host(index):
-    """Toggle enabled/disabled status of a Docker host."""
+    """切换Docker主机的启用/禁用状态"""
     load_config(silent=True)
     
     hosts = config.get("docker_hosts", [])
     if index < 0 or index >= len(hosts):
-        return jsonify({"success": False, "error": "Invalid host index"}), 400
+        return jsonify({"success": False, "error": "无效的主机索引"}), 400
     
     hosts[index]["enabled"] = not hosts[index].get("enabled", True)
     config["docker_hosts"] = hosts
     save_config()
     
-    status = "enabled" if hosts[index]["enabled"] else "disabled"
-    return jsonify({"success": True, "enabled": hosts[index]["enabled"], "message": f"Host {status}"})
+    status = "已启用" if hosts[index]["enabled"] else "已禁用"
+    return jsonify({"success": True, "enabled": hosts[index]["enabled"], "message": f"主机已{status}"})
 
 
 class StandaloneApplication(BaseApplication):
-    """Custom Gunicorn application for running Flask with specific options."""
+    """自定义Gunicorn应用"""
     
     def __init__(self, app, options=None):
-        """Initialize the application with Flask app and options."""
+        """初始化Gunicorn应用"""
         self.options = options or {}
         self.application = app
         super().__init__()
 
     def load_config(self):
-        """Load Gunicorn configuration from options dict."""
+        """加载Gunicorn配置"""
         for key, value in self.options.items():
             if key in self.cfg.settings and value is not None:
                 self.cfg.set(key.lower(), value)
 
     def load(self):
-        """Return the Flask application instance."""
+        """返回Flask应用实例"""
         return self.application
 
 
 if __name__ == "__main__":
     load_config()
     scheduler.add_job(heartbeat, CronTrigger(second=0), id="heartbeat", max_instances=1, coalesce=True)
-    log("Scheduler heartbeat job started (every minute at :00).")
+    log("调度器心跳任务已启动（每分钟在:00 执行）。")
     
     options = {
         "bind": "0.0.0.0:8080",
         "workers": 1,
         "threads": 2,
         "timeout": 120,
-        # Disable access logs (172.x request lines)
         "accesslog": None,
         "errorlog": "-",
         "loglevel": "info",

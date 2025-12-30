@@ -1,276 +1,276 @@
-# Changelog
+# 更新日志
 
-All notable changes to PruneMate will be documented in this file.
+PruneMate 的所有重大变更都会记录在此文件中。
 
-## [V1.3.1] - December 2025
+## [V1.3.1] - 2025年12月
 
-### Added
-- 🔀 **Schedule enable/disable toggle** - New UI toggle to control automatic scheduling
-  - "Enable automatic schedule" switch in Schedule section
-  - Allows running manual cleanups only without affecting scheduled runs
-  - Scheduler still heartbeats every minute but skips execution when disabled
-  - Setting persists in config.json and defaults to enabled for existing installations
-- 🏗️ **Multi-architecture Docker image support** - Build once, run anywhere
-  - Native support for amd64 and arm64 architectures
-  - Works seamlessly on Intel/AMD, Raspberry Pi 4/5, Apple Silicon M1/M2/M3, and ARM-based NAS
-  - Docker Buildx multi-platform builds for efficient distribution
-  - No more local builds required for ARM systems
-  - Single docker-compose.yaml works on all architectures
+### 新增
+- 🔀 **计划启用/禁用开关** - 新增UI开关控制自动计划
+  - 计划部分添加“启用自动计划”开关
+  - 允许仅运行手动清理而不影响计划任务
+  - 调度器仍每分钟心跳但禁用时跳过执行
+  - 设置保存在config.json中，现有安装默认启用
+- 🏗️ **多架构Docker镜像支持** - 一次构建，随处运行
+  - 原生支持amd64和arm64架构
+  - 无缝运行在Intel/AMD、树莓派4/5、Apple Silicon M1/M2/M3以及基于ARM的NAS上
+  - 使用Docker Buildx多平台构建进行高效分发
+  - ARM系统不再需要本地构建
+  - 单个docker-compose.yaml适用于所有架构
 
-### Fixed
-- 🏠 **Homepage widget integration with authentication** - Stats endpoints now work with auth enabled
-  - `/stats` and `/api/stats` endpoints accessible without authentication
-  - Required for Homepage and Dashy widgets to display statistics when login is enabled
-  - Backward compatible: endpoints contain non-sensitive Docker cleanup statistics only
-- 📊 **Schedule configuration logging** - Added `schedule_enabled` to effective config output
-  - Proper logging of all schedule settings including new toggle
+### 修复
+- 🏠 **登录状态下的Homepage小部件集成** - 统计端点现在在登录启用时也可访问
+  - `/stats` 和 `/api/stats` 端点无需认证即可访问
+  - 确保在启用登录时Homepage和Dashy小部件仍能显示统计信息
+  - 向后兼容：端点仅包含非敏感的Docker清理统计数据
+- 📊 **计划配置日志** - 在有效配置输出中添加`schedule_enabled`
+  - 正确记录包括新开关在内的所有计划设置
 
-### Changed
-- 📦 **Docker Compose default** - Changed from local build to pre-built multi-arch image
-  - docker-compose.yaml now uses `image: anoniemerd/prunemate:latest` by default
-  - Auto-detects correct architecture (amd64/arm64) at pull time
-  - Significantly faster deployment and smaller initial setup
+### 变更
+- 📦 **Docker Compose默认设置** - 从本地构建改为预构建的多架构镜像
+  - docker-compose.yaml现在默认使用`image: anoniemerd/prunemate:latest`
+  - 在拉取时自动检测正确的架构（amd64/arm64）
+  - 显著加快部署速度和减少初始设置时间
 
-## [V1.3.0] - December 2025
+## [V1.3.0] - 2025年12月
 
-### Added
-- 🔐 **Optional authentication system** - Secure password protection for web interface and API
-  - Form-based login with styled page matching app design
-  - Scrypt password hashing (32768 iterations, industry standard)
-  - Base64-encoded hashes to prevent Docker Compose from interpreting `$` as environment variables
-  - Built-in hash generator: `docker run --rm anoniemerd/prunemate python prunemate.py --gen-hash "password"`
-  - Session management with secure HttpOnly cookies
-  - Basic Auth fallback for API clients (Homepage, Dashy, etc.)
-  - Logout button in dashboard top-right corner
-  - Opt-in design: only enabled when `PRUNEMATE_AUTH_PASSWORD_HASH` is set
-  - Backward compatible: runs in open mode without auth variables
-  - New environment variables: `PRUNEMATE_AUTH_USER` (default: admin), `PRUNEMATE_AUTH_PASSWORD_HASH`
-  - Credit: [@difagume](https://github.com/difagume)
-- 🏗️ **Docker build cache pruning support** - New option to clean up Docker builder cache
-  - Can reclaim significant disk space
-  - Uses Docker API's `/build/prune` endpoint
-  - Integrated into preview, statistics, and notifications
-  - **⚠️ IMPORTANT: Docker Socket Proxy users MUST add `BUILD=1` environment variable to enable this feature**
-  - See README for updated Docker Socket Proxy configuration
-- 💬 **Discord notification provider** - Full support for Discord webhook notifications
-  - Configure via Webhook URL (from Discord server integrations)
-  - Priority-based color coding: Low=Green, Medium=Orange, High=Red
-  - Rich embed formatting with timestamps
-  - Works alongside Gotify, ntfy, and Telegram providers
-- 📱 **Telegram notification provider** - Full support for Telegram Bot notifications
-  - Priority support: Low=silent notifications, Medium/High=normal sound
-  - HTML formatting for rich message display
-  - Works alongside Gotify, ntfy, and Discord providers
-- 🎯 **Text-based priority system** - Changed from numeric (1-10) to text-based (Low/Medium/High)
-  - More intuitive and user-friendly
-  - Default priority changed from "Low" to "Medium"
-  - Automatic migration from numeric to text priority on upgrade
-  - Provider-specific priority mapping (e.g., Telegram uses disable_notification, Gotify uses numeric values)
+### 新增
+- 🔐 **可选认证系统** - 为Web界面和API提供安全密码保护
+  - 与应用设计风格一致的表单式登录页面
+  - 使用scrypt密码哈希算法（32768次迭代，行业标准）
+  - 使用Base64编码的哈希值，防止Docker Compose将`$`字符解释为环境变量
+  - 内置哈希生成工具：`docker run --rm anoniemerd/prunemate python prunemate.py --gen-hash "password"`
+  - 使用安全HttpOnly Cookie进行会话管理
+  - 为API客户端（Homepage、Dashy等）提供Basic Auth支持
+  - 仪表板右上角添加注销按钮
+  - 可选启用设计：仅当设置了`PRUNEMATE_AUTH_PASSWORD_HASH`时才启用
+  - 向后兼容：不设置认证变量时以开放模式运行
+  - 新增环境变量：`PRUNEMATE_AUTH_USER`（默认：admin）、`PRUNEMATE_AUTH_PASSWORD_HASH`
+  - 感谢：[@difagume](https://github.com/difagume)
+- 🏗️ **Docker构建缓存清理支持** - 新增清理Docker构建缓存的选项
+  - 可以 reclaim大量磁盘空间
+  - 使用Docker API的`/build/prune`端点
+  - 集成到预览、统计和通知系统中
+  - **⚠️ 重要：Docker Socket Proxy用户必须添加`BUILD=1`环境变量才能启用此功能**
+  - 查看README以获取更新后的Docker Socket Proxy配置
+- 💬 **Discord通知支持** - 完全支持Discord Webhook通知
+  - 通过Webhook URL配置（来自Discord服务器集成）
+  - 基于优先级的颜色编码：低=绿色，中=橙色，高=红色
+  - 带有时间戳的丰富嵌入式格式
+  - 与Gotify、ntfy和Telegram通知并存
+- 📱 **Telegram通知支持** - 完全支持Telegram Bot通知
+  - 优先级支持：低=静默通知，中/高=正常声音
+  - 使用HTML格式实现富文本消息显示
+  - 与Gotify、ntfy和Discord通知并存
+- 🎯 **基于文本的优先级系统** - 从数值（1-10）改为文本（低/中/高）
+  - 更直观且用户友好
+  - 默认优先级从“低”改为“中”
+  - 升级时自动从数值优先级迁移到文本优先级
+  - 基于提供商的优先级映射（例如：Telegram使用disable_notification，Gotify使用数值）
 
-### Changed
-- ⚙️ **Default notification priority** - Changed from "Low" to "Medium" for better visibility
-  - All new configurations default to medium priority
-  - Existing configurations with numeric priorities auto-migrate to text equivalents
-  - Migration logic: 1-3→Low, 4-7→Medium, 8-10→High
+### 变更
+- ⚙️ **默认通知优先级** - 从“低”改为“中”以提高可见性
+  - 所有新配置默认使用中等优先级
+  - 现有数值优先级配置自动迁移为等效的文本优先级
+  - 迁移逻辑：1-3→低，4-7→中，8-10→高
 
-### Fixed
-- 🔧 **Notification provider migration** - Added forward compatibility for new providers
-  - Discord and Telegram credentials automatically added to existing configs
-  - All provider subkeys (gotify, ntfy, discord, telegram) guaranteed to exist
-  - Prevents errors when upgrading from older versions
+### 修复
+- 🔧 **通知提供商迁移** - 为新提供商添加向前兼容性
+  - Discord和Telegram凭据自动添加到现有配置中
+  - 保证所有提供商子密钥（gotify、ntfy、discord、telegram）都存在
+  - 防止从旧版本升级时出错
 
-## [V1.2.8] - December 2025
+## [V1.2.8] - 2025年12月
 
-### Added
-- 🔍 **Prune preview before manual execution** - See exactly what will be deleted before running manual prune
-  - Shows detailed list of containers, images, networks, and volumes to be removed
-  - Per-host breakdown for multi-host setups
-  - Two-step confirmation process for safer manual pruning
-  - Only applies to manual "Run now" executions (scheduled runs remain automatic)
-  - Auto-save functionality: checkbox states persist when switching between preview and settings
-- 🏠 **Homepage dashboard integration** - New `/api/stats` endpoint for Homepage widget support
-  - Returns all-time statistics in customapi-compatible format
-  - Includes human-readable space reclaimed field (`spaceReclaimedHuman`)
-  - Relative time formatting for last run (`lastRunText` shows "2h ago", "3d ago", etc.)
-  - Easy integration with Homepage dashboard services
+### 新增
+- 🔍 **手动执行前预览** - 在运行手动清理前查看即将被删除的内容
+  - 显示将被删除的容器、镜像、网络和卷的详细列表
+  - 多主机设置下按主机展示
+  - 两步确认流程，提高手动清理的安全性
+  - 仅适用于手动“立即运行”执行（计划运行保持自动）
+  - 自动保存功能：在预览和设置之间切换时保留复选框状态
+- 🏠 **Homepage仪表板集成** - 新增`/api/stats`端点支持Homepage小部件
+  - 返回自定义API格式的历史统计数据
+  - 包含人类可读的空间回收字段（`spaceReclaimedHuman`）
+  - 上次运行的相对时间格式（`lastRunText`显示“2小时前”、“3天前”等）
+  - 轻松与Homepage仪表板服务集成
 
-### Improved
-- 🧹 **Image prune behavior** - Now removes ALL unused images (not just dangling)
-  - Uses `filters={"dangling": False}` for comprehensive cleanup
-  - Matches preview display with actual prune behavior
-  - More aggressive space reclamation while maintaining safety
-- 📦 **Volume prune behavior** - Explicitly includes named volumes
-  - Uses `filters={"all": True}` to remove all unused volumes
-  - Named volumes are pruned alongside anonymous volumes
-  - Preview accurately shows all volumes to be removed
+### 改进
+- 🧹 **镜像清理行为** - 现在删除所有未使用的镜像（不仅仅是悬空镜像）
+  - 使用`filters={"dangling": False}`进行全面清理
+  - 预览显示与实际清理行为一致
+  - 在保持安全的前提下更积极地回收空间
+- 📦 **卷清理行为** - 显式包含命名卷
+  - 使用`filters={"all": True}`删除所有未使用的卷
+  - 命名卷与匿名卷一同被清理
+  - 预览准确显示将被删除的所有卷
 
-### Fixed
-- 🐛 **Checkbox reading bug** - Preview modal now correctly reads checkbox states
-  - Added missing `id` attributes to all four checkboxes
-  - JavaScript `getElementById()` now works correctly
-  - Fixed "No prune options selected" error when checkboxes were checked
-- 🐛 **JavaScript variable scope** - Fixed redeclaration errors in time formatting
-  - Resolved Jinja2 template variable conflicts in 12h/24h time display
-  - Cleaner variable naming for better maintainability
-
----
-
-## [V1.2.7] - December 2025
-
-### Added
-- 🔐 **ntfy authentication support** - Bearer token and Basic Auth (username:password in URL)
-  - Priority system: Bearer token → Basic Auth → unauthenticated
-  - RFC 3986 compliant URL parsing for embedded credentials
-  - Optional token field in UI for ntfy provider
-- 🔒 **Enhanced credential security** - Passwords and tokens masked in all log output
-  - URL credentials (username:password) redacted in logs
-  - Bearer tokens sanitized in notification logs
-
-### Improved
-- 🎨 **Logo enhancement** - Improved SVG logo design (thanks to [@shollyethan](https://github.com/shollyethan)) + added to the Self-Hosted Dashboard Icons on https://selfh.st/icons/
-- 📏 Logo size increased from 76×76px to 82×82px for better visibility
-- 📱 **Better mobile support** - Enhanced responsive design for smartphone usage
-- 🔔 Notification panel height increased to 900px with enhanced scrolling behavior
-- 🔧 **Config migration improvements** - Deep merge strategy for nested structures
-  - Prevents data loss during v1.2.6 → v1.2.7 upgrades
-  - Preserves both gotify and ntfy settings in nested notifications structure
-- 📊 **Stats persistence improvements** - Forward-compatible field migration
-  - Type-safe increments with defensive programming
-  - Graceful handling of corrupt or incomplete stats files
-- 🏗️ **Hosts API consistency** - Local socket now included in `/hosts` endpoint response
-
-### Fixed
-- 🐛 Config shallow merge bug causing nested key loss during upgrades
-  - Replaced `dict.update()` with recursive `_deep_merge()` function
-- 🐛 Legacy notification migration incomplete (only migrated gotify, missed ntfy)
-- 🐛 Stats field migration missing for new fields in future versions
-- 🐛 Stats type safety issues with corrupt JSON files
-- 🐛 Notification panel button visibility on smaller screens
+### 修复
+- 🐛 **复选框读取错误** - 预览模态框现在正确读取复选框状态
+  - 为所有四个复选框添加缺失的`id`属性
+  - JavaScript的`getElementById()`现在可以正确工作
+  - 修复了复选框已勾选但仍显示“未选择清理选项”错误的问题
+- 🐛 **JavaScript变量作用域** - 修复了时间格式化中的重复声明错误
+  - 解决了12h/24h时间显示中的Jinja2模板变量冲突
+  - 使用更清晰的变量命名，提高可维护性
 
 ---
 
-## [V1.2.6] - November 2025
+## [V1.2.7] - 2025年12月
 
-### Added
-- 🐳 **Multi-host support** - Manage multiple Docker hosts from one interface
-  - Per-host results in notifications with detailed breakdown for each Docker host
-  - Docker hosts management UI (add, edit, enable/disable, delete external hosts)
+### 新增
+- 🔐 **ntfy认证支持** - 支持Bearer令牌和Basic Auth（URL中的用户名:密码）
+  - 优先级系统：Bearer令牌 → Basic Auth → 未认证
+  - 符合RFC 3986标准的嵌入式凭据URL解析
+  - UI中为ntfy提供商添加可选令牌字段
+- 🔒 **增强凭据安全性** - 密码和令牌在所有日志输出中被屏蔽
+  - 日志中URL凭据（用户名:密码）被脱敏
+  - 通知日志中的Bearer令牌被清理
 
-### Improved
-- 🔔 Notification formatting with enhanced layout, consistent emoji usage, and bullet points
-- 📬 Notifications now show per-host breakdown for multi-host setups with aggregate totals
-- 🎯 Better visual hierarchy in notifications with clear sections and spacing
-- 🔧 Code quality improvements and better error handling
+### 改进
+- 🎨 **Logo增强** - 改进SVG Logo设计（感谢[@shollyethan](https://github.com/shollyethan)），并添加到https://selfh.st/icons/的Self-Hosted Dashboard Icons库
+- 📏 Logo尺寸从76×76px增加到82×82px，提高可见性
+- 📱 **更好的移动设备支持** - 增强智能手机使用的响应式设计
+- 🔔 通知面板高度增加到900px，改进滚动行为
+- 🔧 **配置迁移改进** - 嵌套结构的深度合并策略
+  - 防止v1.2.6 → v1.2.7升级过程中数据丢失
+  - 在嵌套通知结构中同时保留gotify和ntfy设置
+- 📊 **统计数据持久化改进** - 向前兼容的字段迁移
+  - 采用防御式编程实现类型安全的增量更新
+  - 优雅处理损坏或不完整的统计文件
+- 🏗️ **Hosts API一致性** - 本地套接字现在包含在`/hosts`端点响应中
 
-### Fixed
-- 🐛 Critical checkbox handling bug affecting all prune and notification toggles
-
----
-
-## [V1.2.5] - November 2025
-
-### Improved
-- 🔧 Eliminated duplicate code - moved `_validate_time()` to module level
-  - Removed identical function definitions from `/update` and `/test-notification` routes
-  - Renamed to `validate_time()` as public module-level function
-- 📝 Better log clarity for prune operations
-  - Volumes: "Pruning volumes (unused anonymous volumes only)…"
-- 🧹 Moved `calendar` import from inline to top-level imports
-
-### Fixed
-- 🐛 Monthly schedule bug where jobs never ran in shorter months
-  - Jobs configured for day 30-31 now run on last day of shorter months (e.g., Feb 28/29)
-  - Uses `calendar.monthrange()` to determine actual last day of each month
-- 🐛 Configuration deep copy bug causing shared nested dictionaries
-  - All `.copy()` operations replaced with proper deep copy via `json.loads(json.dumps())`
-  - Prevents config corruption when modifying nested notification settings
-  - Fixed in 4 locations: initialization + 3 in `load_config()`
-- 🐛 KeyError in legacy Gotify config migration
-  - Now safely checks if notifications dict exists before accessing nested keys
-  - Uses `.get()` with fallback values to prevent crashes on old config files
+### 修复
+- 🐛 配置浅合并Bug导致升级过程中嵌套键丢失
+  - 使用递归`_deep_merge()`函数替换`dict.update()`
+- 🐛 旧版通知迁移不完整（仅迁移了gotify，遗漏了ntfy）
+- 🐛 新版本新增字段的统计数据字段迁移缺失
+- 🐛 损坏JSON文件导致的统计数据类型安全问题
+- 🐛 小屏幕上通知面板按钮不可见的问题
 
 ---
 
-## [V1.2.4] - November 2025
+## [V1.2.6] - 2025年11月
 
-### Added
-- 📊 **All-Time Statistics dashboard** showing cumulative prune data
-  - Total space reclaimed across all runs
-  - Counters for containers, images, networks, volumes deleted
-  - Total prune runs with first/last run timestamps
-  - Statistics persist in `/config/stats.json`
+### 新增
+- 🐳 **多主机支持** - 从一个界面管理多个Docker主机
+  - 通知中按主机展示结果，并汇总各Docker主机的详细信息
+  - Docker主机管理UI（添加、编辑、启用/禁用、删除外部主机）
 
-### Improved
-- 📝 All functions now have proper Python docstrings for better IDE support
-- 🔧 Code quality improvements and better error handling
+### 改进
+- 🔔 通知格式优化，布局更清晰，表情符号使用一致，添加项目符号
+- 📬 多主机设置下通知显示按主机划分的详细信息和汇总统计
+- 🎯 通知视觉层次更清晰，使用分节和间距
+- 🔧 代码质量改进，错误处理更完善
 
-### Fixed
-- 🐛 12-hour time format backend handling in `/update` and `/test-notification` routes
-- 🐛 Minute display now shows leading zeros (e.g., "7:04" instead of "7:4")
-- 🐛 Time input validation now runs on page load (`initTimeClamp()`)
+### 修复
+- 🐛 影响所有清理和通知开关的复选框处理严重Bug
 
 ---
 
-## [V1.2.3] - November 2025
+## [V1.2.5] - 2025年11月
 
-### Added
-- 🏗️ ARM64 architecture installation instructions (Apple Silicon, ARM servers, Raspberry Pi)
+### 改进
+- 🔧 消除重复代码 - 将`_validate_time()`移到模块级别
+  - 从`/update`和`/test-notification`路由中删除重复的函数定义
+  - 重命名为`validate_time()`作为公共模块级函数
+- 📝 清理操作日志更清晰
+  - 卷：“正在清理卷（仅未使用的匿名卷）…”
+- 🧹 将`calendar`导入从内联移到顶部
 
-### Improved
-- 📜 License changed from MIT to AGPLv3
-- 📝 All functions documented in English for better code maintainability
-- 📚 Documentation improvements with Quick Start guide
-
----
-
-## [V1.2.2] - November 2025
-
-### Added
-- ✨ 12/24-hour time format support via `PRUNEMATE_TIME_24H` environment variable
-- 🎨 Custom time picker for 12-hour mode (hour 1-12, minutes, AM/PM selector)
-
-### Improved
-- 🌍 Timezone handling across all components (logs, scheduling, notifications)
-- ⚡ Simplified architecture: reduced from 2 workers to 1 for better reliability
-- 📝 Silent config loading to reduce log noise
-- 🔧 Input validation with instant clamping and 2-digit limits
-
-### Fixed
-- 🐛 Config synchronization issues in multi-worker setup
-- 🔒 Thread-safe configuration saving with file locking
+### 修复
+- 🐛 每月计划Bug，导致在天数较少的月份任务从不执行
+  - 配置为30-31日的任务现在在天数较少的月份最后一天执行（例如2月28/29日）
+  - 使用`calendar.monthrange()`确定每个月的实际最后一天
+- 🐛 配置深拷贝Bug导致共享嵌套字典
+  - 使用`json.loads(json.dumps())`实现真正的深拷贝，替换所有`.copy()`操作
+  - 防止修改嵌套通知设置时配置损坏
+  - 在4个位置修复：初始化 + `load_config()`中的3处
+- 🐛 旧版Gotify配置迁移中的KeyError
+  - 现在安全检查通知字典是否存在再访问嵌套键
+  - 使用`.get()`带默认值防止旧配置文件导致崩溃
 
 ---
 
-## [V1.2.1] - November 2025
+## [V1.2.4] - 2025年11月
 
-### Improved
-- 🔒 Thread-safe config saving mechanism
-- 📊 Logging with timezone-aware timestamps
+### 新增
+- 📊 **历史统计仪表板** 显示累积清理数据
+  - 所有清理操作累计回收的空间
+  - 已删除容器、镜像、网络、卷的计数
+  - 总清理次数以及首次/末次运行时间戳
+  - 统计数据保存在`/config/stats.json`
 
-### Fixed
-- 🐛 Scheduler not triggering at configured times
-- 🔄 Config reloads before each scheduled check to ensure synchronization
+### 改进
+- 📝 所有函数现在都有完善的Python文档字符串，提高IDE支持
+- 🔧 代码质量改进，错误处理更完善
 
----
-
-## [V1.2.0] - November 2025
-
-### Added
-- 🔔 Notification support (Gotify & ntfy.sh)
-- 🎯 "Only notify on changes" option
-- 📊 Enhanced statistics and detailed cleanup reporting
-
-### Improved
-- 🎨 Complete UI redesign with modern dark theme
-- 🔘 Improved button animations and hover effects
+### 修复
+- 🐛 `/update`和`/test-notification`路由中的12小时时间格式后端处理
+- 🐛 分钟显示现在显示前导零（例如“7:04”而非“7:4”）
+- 🐛 时间输入验证现在在页面加载时运行（`initTimeClamp()`）
 
 ---
 
-## [V1.1.0] - October 2025
+## [V1.2.3] - 2025年11月
 
-### Added
-- 🎉 Initial release
-- 🕐 Daily, Weekly, and Monthly scheduling
-- 🧹 Selective cleanup options (containers, images, networks, volumes)
-- 🌐 Web interface for configuration
-- 📁 Persistent configuration and logging
+### 新增
+- 🏗️ ARM64架构安装说明（Apple Silicon、ARM服务器、树莓派）
+
+### 改进
+- 📜 许可证从MIT改为AGPLv3
+- 📝 所有函数使用英文文档，提高代码可维护性
+- 📚 文档改进，添加快速开始指南
+
+---
+
+## [V1.2.2] - 2025年11月
+
+### 新增
+- ✨ 12/24小时时间格式支持，通过`PRUNEMATE_TIME_24H`环境变量设置
+- 🎨 12小时模式的自定义时间选择器（小时1-12，分钟，AM/PM选择器）
+
+### 改进
+- 🌍 所有组件的时区处理（日志、计划、通知）
+- ⚡ 简化架构：从2个工作进程减少到1个，提高可靠性
+- 📝 静默加载配置，减少日志噪音
+- 🔧 输入验证，即时限制和两位数字限制
+
+### 修复
+- 🐛 多工作进程设置下的配置同步问题
+- 🔒 使用文件锁定确保线程安全的配置保存
+
+---
+
+## [V1.2.1] - 2025年11月
+
+### 改进
+- 🔒 线程安全的配置保存机制
+- 📊 带有时区感知的时间戳日志
+
+### 修复
+- 🐛 调度器未在配置时间触发
+- 🔄 每次计划检查前重新加载配置以确保同步
+
+---
+
+## [V1.2.0] - 2025年11月
+
+### 新增
+- 🔔 通知支持（Gotify & ntfy.sh）
+- 🎯 “仅在发生变化时通知”选项
+- 📊 增强的统计和详细清理报告
+
+### 改进
+- 🎨 完整UI重新设计，采用现代深色主题
+- 🔘 改进的按钮动画和悬停效果
+
+---
+
+## [V1.1.0] - 2025年10月
+
+### 新增
+- 🎉 初始发布
+- 🕐 每日、每周和每月计划任务
+- 🧹 选择性清理选项（容器、镜像、网络、卷）
+- 🌐 用于配置的Web界面
+- 📁 持久化配置和日志
