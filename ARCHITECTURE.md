@@ -6,46 +6,46 @@
 
 ```mermaid
 flowchart TD
-    Start([PruneMate]) --> Auth{Auth<br/>Enabled?}
-    Auth -->|No| WebUI[Web UI<br/>Port 8080]
-    Auth -->|Yes| Login[Login Page<br/>Session Auth]
+    Start([PruneMate]) --> Auth{认证<br/>已启用？}
+    Auth -->|No| WebUI[Web 界面<br/>端口 8080]
+    Auth -->|Yes| Login[登录页面<br/>会话认证]
     Login -->|Authenticated| WebUI
-    Login -->|API Client| BasicAuth[Basic Auth<br/>Fallback]
+    Login -->|API Client| BasicAuth[Basic 认证<br/>回退方式]
     BasicAuth -->|Valid| WebUI
     
-    Start --> Scheduler[Scheduler<br/>every minute]
-    Start --> API[API Endpoints<br/>/stats, /api/stats<br/>no auth required]
+    Start --> Scheduler[调度器<br/>每分钟运行一次]
+    Start --> API[API 端点<br/>/stats, /api/stats<br/>无需认证]
     
-    WebUI --> |Configure| Config[(config.json<br/>• Schedule enabled<br/>• Frequency<br/>• Prune options<br/>• Notifications<br/>• Remote hosts)]
-    WebUI --> |View Stats| StatsUI[Display stats.json<br/>All-time metrics]
-    WebUI --> |Manual/Preview| Manual[Manual Trigger]
+    WebUI --> |Configure| Config[(config.json<br/>• 启用调度<br/>• 运行频率<br/>• 清理选项<br/>• 通知设置<br/>• 远程主机)]
+    WebUI --> |View Stats| StatsUI[显示 stats.json<br/>全时统计]
+    WebUI --> |Manual/Preview| Manual[手动触发]
     API --> |Homepage Widget| StatsUI
     
-    Scheduler --> CheckSchedule{Schedule<br/>enabled?}
+    Scheduler --> CheckSchedule{调度<br/>已启用？}
     CheckSchedule --> |No| Scheduler
-    CheckSchedule --> |Yes| CheckTime{Scheduled<br/>time?}
+    CheckSchedule --> |Yes| CheckTime{已到<br/>计划时间？}
     CheckTime --> |No| Scheduler
-    CheckTime --> |Yes| LoadConfig[Load Config]
+    CheckTime --> |Yes| LoadConfig[加载配置]
     
-    Manual --> |Preview| Preview[Get Preview<br/>Per-host breakdown<br/>Show resources]
+    Manual --> |Preview| Preview[获取预览<br/>按主机拆分<br/>显示资源列表]
     Preview --> |User confirms| LoadConfig
     
-    LoadConfig --> Lock{Already<br/>running?}
-    Lock --> |Yes| Skip[Skip]
-    Lock --> |No| CheckHosts{Remote<br/>hosts?}
+    LoadConfig --> Lock{是否已在<br/>运行中？}
+    Lock --> |Yes| Skip[跳过]
+    Lock --> |No| CheckHosts{存在<br/>远程主机？}
     
-    CheckHosts --> |Yes| Remote[Local + Remote Hosts<br/>via docker-socket-proxy<br/>tcp://host:2375]
-    CheckHosts --> |No| Local[Local Host Only<br/>unix:///var/run/docker.sock]
+    CheckHosts --> |Yes| Remote[本地 + 远程主机<br/>经由 docker-socket-proxy<br/>tcp://host:2375]
+    CheckHosts --> |No| Local[仅本地主机<br/>unix:///var/run/docker.sock]
     
     Remote --> CheckOptions
     Local --> CheckOptions
     
-    CheckOptions{Check enabled<br/>prune options}
-    CheckOptions --> |Containers ✓| PruneC[Prune Containers<br/>stopped/exited]
-    CheckOptions --> |Images ✓| PruneI[Prune Images<br/>all unused]
-    CheckOptions --> |Networks ✓| PruneN[Prune Networks<br/>unused]
-    CheckOptions --> |Volumes ✓| PruneV[Prune Volumes<br/>all unused + named]
-    CheckOptions --> |Build Cache ✓| PruneB[Prune Build Cache<br/>Docker builder cache]
+    CheckOptions{检查已启用的<br/>清理选项}
+    CheckOptions --> |Containers ✓| PruneC[清理容器<br/>已停止/已退出]
+    CheckOptions --> |Images ✓| PruneI[清理镜像<br/>所有未使用]
+    CheckOptions --> |Networks ✓| PruneN[清理网络<br/>未使用]
+    CheckOptions --> |Volumes ✓| PruneV[清理卷<br/>所有未使用 + 具名卷]
+    CheckOptions --> |Build Cache ✓| PruneB[清理构建缓存<br/>Docker 构建缓存]
     
     PruneC --> Aggregate
     PruneI --> Aggregate
@@ -53,14 +53,14 @@ flowchart TD
     PruneV --> Aggregate
     PruneB --> Aggregate
     
-    Aggregate[Aggregate Results<br/>Space + Counts] --> Stats[Update stats.json<br/>• Total runs<br/>• Resources deleted<br/>• Space reclaimed<br/>• Timestamps]
+    Aggregate[汇总结果<br/>空间 + 数量] --> Stats[更新 stats.json<br/>• 总运行次数<br/>• 删除的资源<br/>• 回收的空间<br/>• 时间戳]
     
-    Stats --> Notify{Notifications<br/>enabled?}
+    Stats --> Notify{通知<br/>已启用？}
     
-    Notify --> |Yes + Changes| Send[Send Notification<br/>Gotify/ntfy/Discord/Telegram<br/>Per-host breakdown]
-    Notify --> |No or No changes| Log[Write to<br/>prunemate.log]
+    Notify --> |Yes + Changes| Send[发送通知<br/>Gotify / ntfy / Discord / Telegram<br/>按主机拆分结果]
+    Notify --> |No or No changes| Log[写入<br/>prunemate.log]
     Send --> Log
-    Log --> Done[Done]
+    Log --> Done[完成]
     
     style Start fill:#4a90e2
     style WebUI fill:#50c878
@@ -73,6 +73,7 @@ flowchart TD
     style API fill:#2ecc71
     style Remote fill:#8e44ad
     style CheckSchedule fill:#c0392b
+
 ```
 
 ## 组件说明
