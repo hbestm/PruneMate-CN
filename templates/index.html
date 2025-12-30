@@ -1533,10 +1533,10 @@
       const actions = document.getElementById('previewActions');
       
       // Reset actions div to default state (in case it was modified by previous execution)
-      actions.innerHTML = '<button onclick="closePrunePreview()" class="btn" style="background: rgba(148,163,184,0.08); color: var(--text);">Cancel</button><button onclick="executeConfirmedPrune()" class="btn btn-secondary" id="confirmPruneBtn" style="display: none;">✓ Confirm & Execute</button>';
+      actions.innerHTML = '<button onclick="closePrunePreview()" class="btn" style="background: rgba(148,163,184,0.08); color: var(--text);">取 消</button><button onclick="executeConfirmedPrune()" class="btn btn-secondary" id="confirmPruneBtn" style="display: none;">执 行</button>';
       
       modal.style.display = 'block';
-      content.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);"><div style="font-size: 2rem; margin-bottom: 12px;">⏳</div><p>Loading preview...</p></div>';
+      content.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);"><div style="font-size: 2rem; margin-bottom: 12px;">⏳</div><p>预览加载中...</p></div>';
       actions.style.visibility = 'hidden';
       
       // Collect current prune settings from checkboxes
