@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
-  <title>Login - PruneMate</title>
+  <title>登录 - PruneMate</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='prunemate-icon.svg') }}"/>
   <style>
-    /* Reused theme colors and design tokens */
+    /* 复用主题颜色和设计令牌 */
     :root{
       --bg-900: #020617;
       --bg-800: #0b1120;
@@ -168,8 +168,8 @@
     <div class="logo-wrap">
       <img src="{{ url_for('static', filename='prunemate.png') }}" alt="PruneMate">
     </div>
-    <h1>Sign in to PruneMate</h1>
-    <p class="subtitle">Authentication required to continue</p>
+    <h1>登录 PruneMate</h1>
+    <p class="subtitle">需要身份认证才能继续</p>
 
     {% with messages = get_flashed_messages() %}
       {% if messages %}
@@ -181,16 +181,16 @@
 
     <form method="post">
       <div class="field">
-        <label for="username">Username</label>
+        <label for="username">用户名</label>
         <input type="text" id="username" name="username" placeholder="admin" autocomplete="username" required autofocus>
       </div>
 
       <div class="field">
-        <label for="password">Password</label>
+        <label for="password">密码</label>
         <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required>
       </div>
 
-      <button type="submit" class="btn">Sign In</button>
+      <button type="submit" class="btn">登录</button>
     </form>
     
     <div class="footer">

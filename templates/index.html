@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
-  <title>PruneMate - Docker cleanup helper</title>
+  <title>PruneMate - Docker资源清理助手</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
@@ -11,7 +11,7 @@
         href="{{ url_for('static', filename='prunemate-icon.svg') }}"/>
 
   <style>
-    /* CSS custom properties (theme colors and design tokens) */
+    /* CSS自定义属性（主题颜色和设计令牌） */
     :root{
       --bg-900: #020617;
       --bg-800: #0b1120;
@@ -29,12 +29,12 @@
       --btn-elev: 0 10px 30px rgba(16,185,129,0.15);
     }
 
-    /* Global box-sizing reset */
+    /* 全局盒模型重置 */
     *{box-sizing:border-box}
 
-    /* Full-height layout setup */
+    /* 全屏布局设置 */
     html,body{height:100%}
-    /* Main body styling with gradient background and flexbox centering */
+    /* 主体样式：渐变背景 + 弹性盒居中 */
     body {
       margin:0;
       font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -50,7 +50,7 @@
       padding:16px 16px;
     }
 
-    /* Main content container with glass morphism effect */
+    /* 主内容容器：毛玻璃效果 */
     .container{
       width:100%;
       max-width:820px;
@@ -64,7 +64,7 @@
       backdrop-filter: blur(6px) saturate(1.05);
     }
 
-    /* Glass effect overlay for container */
+    /* 容器玻璃效果覆盖层 */
     .container::before{
       content:"";
       position:absolute;
@@ -75,7 +75,7 @@
       mix-blend-mode:overlay;
     }
 
-    /* Header layout and logo styling */
+    /* 头部布局和Logo样式 */
     .header{display:flex;align-items:center;gap:14px;margin-bottom:8px}
     .title-block{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;transform:translateY(4px)}
     .logo-wrap{width:82px;height:82px;border-radius:16px;flex-shrink:0}
@@ -84,17 +84,17 @@
     .wordmark{height:36px;max-width:360px}
     .title-block p{margin:4px 0 0 0;color:var(--muted);font-size:0.88rem}
 
-    /* Typography for headings and labels */
+    /* 标题和标签排版 */
     h2{font-size:0.98rem;margin-top:0.9rem;margin-bottom:0.3rem;color:var(--text)}
     h3{font-size:0.9rem;margin:4px 0 6px 0;color:var(--muted);font-weight:600}
     label{font-size:0.9rem;color:var(--text)}
 
-    /* Flash messages */
+    /* 闪消息 */
     .flash{padding:10px 12px;border-radius:12px;margin:10px 0;font-size:0.95rem}
     .flash.info{background:linear-gradient(90deg, rgba(14,165,233,0.08), rgba(59,130,246,0.02));border:1px solid rgba(14,165,233,0.15);color:var(--text)}
     .flash.warn{background:linear-gradient(90deg, rgba(245,158,11,0.06), transparent);border:1px solid rgba(245,158,11,0.12);color:#ffedd5}
 
-    /* Form inputs */
+    /* 表单输入 */
     input[type="time"], select, input[type="number"], input[type="text"], input[type="password"]{
       padding:8px 12px;border-radius:9999px;border:1px solid rgba(255,255,255,0.06);
       background: rgba(2,6,23,0.6);color:var(--text);font-size:0.95rem;outline:none;
@@ -108,14 +108,14 @@
       border-color: rgba(14,165,233,0.6);
     }
 
-    /* Field layout within inline rows */
+    /* 内联行中的字段布局 */
     .row.inline .field{
       min-width:160px;
       display:flex;
       flex-direction:column;
     }
 
-    /* Schedule: 3-column grid for consistent alignment */
+    /* 计划：3列网格，保持对齐一致 */
     .card.schedule .row.inline{
       display:grid;
       grid-template-columns:repeat(3,1fr);
@@ -128,24 +128,24 @@
       min-width:0;
       width:100%;
     }
-    /* Placeholder cell (third column on daily mode) keeps Time centered */
+    /* 占位单元格（日模式下的第三列）让时间保持居中 */
     #schedule-placeholder{display:none;visibility:hidden;pointer-events:none;min-width:0;}
-    /* Schedule and notification labels: 2mm left padding for alignment */
+    /* 计划和通知标签：左侧2mm填充用于对齐 */
     .card.schedule .row.inline .field > label{margin:0 0 6px 0;line-height:1.3;display:block;padding-left:2mm;}
     #notif-panel .row.inline .field > label{margin:0 0 6px 0;line-height:1.3;display:block;padding-left:2mm;}
-    /* Normalize input line-height and box-sizing for consistent pill heights */
+    /* 归一化输入行高和盒模型，确保药丸高度一致 */
     .card.schedule .row.inline input,
     .card.schedule .row.inline select{line-height:1.4;box-sizing:border-box;width:100%;}
-    /* Remove number input spinner for clean appearance */
+    /* 移除数字输入的微调按钮，保持外观整洁 */
     input[type="number"]::-webkit-inner-spin-button,
     input[type="number"]::-webkit-outer-spin-button{ -webkit-appearance: none; margin:0; }
     input[type="number"]{ -moz-appearance: textfield; appearance:textfield; }
 
-    /* Input and select field dimensions */
+    /* 输入和选择框字段尺寸 */
     select{width:100%; min-width:140px}
     input[type="time"], input[type="number"]{width:100%}
 
-    /* Card container styling with gradient background */
+    /* 卡片容器样式：渐变背景 */
     .card{
       background: linear-gradient(160deg, rgba(12,18,32,0.92), rgba(10,14,24,0.86));
       border-radius:var(--radius-lg);
@@ -155,47 +155,47 @@
       margin-top:6px;
     }
 
-    /* Row and field layout */
+    /* 行和字段布局 */
     .row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:8px}
     .row.inline{align-items:center}
     .row .field{min-width:160px}
-    /* Global label indent (8px default, schedule grid overrides to 2mm) */
+    /* 全局标签缩进（默认8px，计划网格覆盖为2mm） */
     .field > label:first-child{padding-left:8px;display:block;}
     .card.schedule .row.inline .field > label:first-child{padding-left:2mm;}
 
-    /* Buttons: consistent vertical centering with asymmetric padding (text nudged up 1mm) */
+    /* 按钮：一致的垂直居中，非对称填充（文本上移1mm） */
     .btn{display:inline-flex;align-items:center;justify-content:center;border-radius:9999px;padding:7px 18px 9px 18px;font-size:0.9rem;font-weight:600;cursor:pointer;border:none;transition:transform .08s ease,box-shadow .12s ease,opacity .12s ease; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height:1.05;}
     .btn-primary{background:linear-gradient(90deg,#22c55e,#16a34a);color:#05220f;box-shadow:var(--btn-elev);padding:7px 20px 9px 20px}
     .btn-primary:hover{transform:translateY(-2px);box-shadow:0 18px 44px rgba(16,185,129,0.14)}
-    /* Secondary button: subtle glass effect with theme border */
+    /* 次要按钮：微妙的毛玻璃效果，带主题边框 */
     .btn-secondary{background:linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.02));color:var(--text);border:1px solid var(--glass-border);padding:7px 18px 9px 18px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.015),0 4px 14px rgba(2,6,23,0.5);backdrop-filter:blur(4px) saturate(1.1);white-space:nowrap;}
     .btn-secondary:hover{transform:translateY(-2px);background:linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03));border-color:rgba(148,163,184,0.28);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.015),0 8px 24px rgba(2,6,23,0.6);}
     .btn-secondary:active{transform:translateY(1px);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.03),0 2px 10px rgba(2,6,23,0.55);}
 
-    /* Small text styling for hints and footer */
+    /* 提示文本和页脚小文字样式 */
     .hint{font-size:0.78rem;color:var(--muted);margin-top:4px}
     .footer{text-align:center;margin-top:12px;font-size:0.78rem;color:#9aa4b2}
 
-    /* Toggle switches */
-    /* Toggle row container layout */
+    /* 切换开关 */
+    /* 切换行容器布局 */
     .toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 0}
     .toggle-row span.label-text{font-size:0.9rem;color:var(--text)}
-    /* Switch container dimensions */
+    /* 开关容器尺寸 */
     .switch{position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0}
-    /* Hide native checkbox input */
+    /* 隐藏原生复选框输入 */
     .switch input{opacity:0;width:0;height:0}
-    /* Slider track background */
+    /* 滑块轨道背景 */
     .slider{position:absolute;cursor:pointer;inset:0;background-color:#374151;border-radius:9999px;transition:.18s;border:1px solid rgba(0,0,0,0.25)}
-    /* Slider knob: 4px horizontal margin for equal spacing */
+    /* 滑块旋钮：左右4px边距，保持等间距 */
     .slider:before{position:absolute;content:"";height:18px;width:18px;left:4px;bottom:4px;background-color:#fff;transition:.18s;border-radius:9999px;box-shadow:0 4px 12px rgba(2,6,23,0.55)}
-    /* Checked state styling with green gradient */
+    /* 选中状态样式：绿色渐变 */
     .switch input:checked + .slider{background:linear-gradient(90deg,var(--accent-strong),#16a34a);box-shadow:0 0 12px rgba(34,197,94,0.14)}
-    /* Move slider knob when checked */
+    /* 选中时移动滑块旋钮 */
     .switch input:checked + .slider:before{transform:translateX(22px)}
-    /* Disabled state styling */
+    /* 禁用状态样式 */
     .switch input:disabled + .slider{opacity:0.4;cursor:default;box-shadow:none}
 
-    /* Toast notification styling (fixed position with animation) */
+    /* 提示通知样式（固定位置，带动画） */
     .toast {
       position:fixed;
       left:50%;
@@ -217,14 +217,14 @@
       max-width:calc(100% - 48px);
       text-align:center;
     }
-    /* Toast visible state */
+    /* 提示通知可见状态 */
     .toast.show {
       opacity:1;
       transform:translateX(-50%) translateY(0);
       pointer-events:auto;
     }
 
-    /* Toast close button */
+    /* 提示通知关闭按钮 */
     .toast .close {
       margin-left:12px;
       background:transparent;
@@ -268,34 +268,34 @@
       stroke-width: 2.5;
     }
 
-    /* Mobile responsive styles for smaller screens */
+    /* 小屏幕响应式样式 */
     @media (max-width: 640px){
       .container{padding:18px;border-radius:18px}
       .row.inline{flex-direction:column;align-items:flex-start;gap:10px}
       select,input[type="time"],input[type="number"]{width:100%}
       .logo-wrap{width:80px;height:80px}
       .wordmark{height:36px}
-      /* Statistics grid: 2 columns on mobile */
+      /* 统计网格：移动端2列 */
       #stats-content > div:first-child{grid-template-columns:repeat(2,1fr)!important;}
-      /* Schedule grid: stack vertically on mobile */
+      /* 计划网格：移动端垂直堆叠 */
       .card.schedule .row.inline{grid-template-columns:1fr!important;gap:10px;}
       .card.schedule .row.inline .field{width:100%;}
       .btn-logout span { display: none; }
       .btn-logout { padding: 8px; }
     }
 
-    /* Utility classes */
+    /* 工具类 */
     .muted{color:var(--muted)}
-    /* Screen reader only text (accessible but invisible) */
+    /* 屏幕阅读器文本（可访问但不可见） */
     .visually-hidden{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);white-space:nowrap}
-    /* Collapsible notification panel */
+    /* 可折叠通知面板 */
     #notif-card #notif-panel{transition:max-height .2s ease-out;overflow:hidden;will-change:max-height;transform:translateZ(0);}
     #notif-card.collapsed #notif-panel{max-height:0!important;}
     #notif-card:not(.collapsed) #notif-panel{max-height:900px;}
     #notif-arrow{transition:transform .2s ease;will-change:transform;}
     #notif-card.collapsed #notif-arrow{transform:rotate(0deg);}
     #notif-card:not(.collapsed) #notif-arrow{transform:rotate(180deg);}
-    /* Collapsible Docker hosts panel */
+    /* 可折叠Docker主机面板 */
     #hosts-card #hosts-panel{transition:max-height .2s ease-out;overflow:hidden;will-change:max-height;transform:translateZ(0);}
     #hosts-card.collapsed #hosts-panel{max-height:0!important;}
     #hosts-card:not(.collapsed) #hosts-panel{max-height:800px;}
@@ -305,31 +305,31 @@
   </style>
 </head>
 <body>
-  <!-- Retrieve flash messages from Flask session -->
+  <!-- 从Flask会话中获取闪消息 -->
   {% set _flashes = get_flashed_messages(with_categories=false) %}
-  <!-- Toast notification for flash messages -->
+  <!-- 闪消息提示通知 -->
   <div id="toast" class="toast" data-message="{% if _flashes %}{{ _flashes[0] | e }}{% endif %}">
     <span id="toast-text"></span>
-    <button id="toast-close" class="close" aria-label="Close">&times;</button>
+    <button id="toast-close" class="close" aria-label="关闭">&times;</button>
   </div>
 
-  <!-- Main application container -->
+  <!-- 应用主容器 -->
   <div class="container">
     {% if session.get('logged_in') %}
-    <a href="{{ url_for('logout') }}" class="btn-logout" title="Logout">
+    <a href="{{ url_for('logout') }}" class="btn-logout" title="注销">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
       </svg>
-      <span>Logout</span>
+      <span>注销</span>
     </a>
     {% endif %}
-    <!-- Header with logo and title -->
+    <!-- 头部：Logo和标题 -->
     <div class="header">
       <div class="logo-wrap">
         <img src="{{ url_for('static', filename='prunemate.png') }}"
-             alt="prunemate logo" />
+             alt="PruneMate Logo" />
       </div>
-      <!-- Title block with SVG wordmark -->
+      <!-- 标题块：SVG Wordmark -->
       <div class="title-block">
         <h1 class="visually-hidden">PruneMate</h1>
         <svg class="wordmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 48" role="img" aria-label="PruneMate">
@@ -345,86 +345,86 @@
             <tspan class="white" dx="-11">Mate</tspan>
           </text>
         </svg>
-        <p>Docker image & resource cleanup helper, on a schedule!</p>
+        <p>Docker镜像与资源定时清理助手！</p>
        </div>
     </div>
 
-    <!-- All-Time Statistics Card -->
-    <h2 style="margin-top:0.8rem;font-size:0.95rem;">All-Time Statistics</h2>
+    <!-- 历史统计卡片 -->
+    <h2 style="margin-top:0.8rem;font-size:0.95rem;">历史统计</h2>
     <div class="card" id="stats-card" style="padding:12px;">
       <div id="stats-loading" style="text-align:center;color:var(--muted);padding:6px;font-size:0.85rem;">
-        Loading statistics...
+        正在加载统计数据...
       </div>
       <div id="stats-content" style="display:none;">
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
-          <!-- Total Space Reclaimed -->
+          <!-- 总回收空间 -->
           <div style="text-align:center;padding:6px;background:linear-gradient(135deg,rgba(34,197,94,0.06),rgba(14,165,233,0.04));border-radius:8px;border:1px solid rgba(34,197,94,0.1);">
             <div style="font-size:1.3rem;font-weight:700;color:var(--accent-strong);font-family:'Montserrat',sans-serif;margin-bottom:1px;" id="stats-space">0 B</div>
-            <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">Total Reclaimed</div>
+            <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">总回收</div>
           </div>
           
-          <!-- Prune Runs -->
+          <!-- 清理次数 -->
           <div style="text-align:center;padding:6px;background:linear-gradient(135deg,rgba(14,165,233,0.06),rgba(99,102,241,0.04));border-radius:8px;border:1px solid rgba(14,165,233,0.1);">
             <div style="font-size:1.3rem;font-weight:700;color:var(--accent);font-family:'Montserrat',sans-serif;margin-bottom:1px;" id="stats-runs">0</div>
-            <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">Prune Runs</div>
+            <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">清理次数</div>
           </div>
           
-          <!-- Containers Deleted -->
+          <!-- 已删除容器 -->
           <div style="text-align:center;padding:6px;background:linear-gradient(135deg,rgba(168,85,247,0.06),rgba(236,72,153,0.04));border-radius:8px;border:1px solid rgba(168,85,247,0.1);">
             <div style="font-size:1.3rem;font-weight:700;color:#c084fc;font-family:'Montserrat',sans-serif;margin-bottom:1px;" id="stats-containers">0</div>
-            <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">Containers</div>
+            <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">容器</div>
           </div>
           
-          <!-- Images Deleted -->
+          <!-- 已删除镜像 -->
           <div style="text-align:center;padding:6px;background:linear-gradient(135deg,rgba(59,130,246,0.06),rgba(14,165,233,0.04));border-radius:8px;border:1px solid rgba(59,130,246,0.1);">
             <div style="font-size:1.3rem;font-weight:700;color:#60a5fa;font-family:'Montserrat',sans-serif;margin-bottom:1px;" id="stats-images">0</div>
-            <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">Images</div>
+            <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">镜像</div>
           </div>
           
-          <!-- Networks Deleted -->
+          <!-- 已删除网络 -->
           <div style="text-align:center;padding:6px;background:linear-gradient(135deg,rgba(251,191,36,0.06),rgba(245,158,11,0.04));border-radius:8px;border:1px solid rgba(251,191,36,0.1);">
             <div style="font-size:1.3rem;font-weight:700;color:#fbbf24;font-family:'Montserrat',sans-serif;margin-bottom:1px;" id="stats-networks">0</div>
-            <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">Networks</div>
+            <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">网络</div>
           </div>
           
-          <!-- Volumes Deleted -->
+          <!-- 已删除卷 -->
           <div style="text-align:center;padding:6px;background:linear-gradient(135deg,rgba(239,68,68,0.06),rgba(220,38,38,0.04));border-radius:8px;border:1px solid rgba(239,68,68,0.1);">
             <div style="font-size:1.3rem;font-weight:700;color:#f87171;font-family:'Montserrat',sans-serif;margin-bottom:1px;" id="stats-volumes">0</div>
-            <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">Volumes</div>
+            <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">卷</div>
           </div>
           
-          <!-- Build Cache Deleted -->
+          <!-- 已删除构建缓存 -->
           <div style="text-align:center;padding:6px;background:linear-gradient(135deg,rgba(34,197,94,0.06),rgba(16,185,129,0.04));border-radius:8px;border:1px solid rgba(34,197,94,0.1);">
             <div style="font-size:1.3rem;font-weight:700;color:#34d399;font-family:'Montserrat',sans-serif;margin-bottom:1px;" id="stats-build-cache">0</div>
-            <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">Build Cache</div>
+            <div style="font-size:0.73rem;color:var(--muted);font-weight:600;">构建缓存</div>
           </div>
         </div>
         
-        <!-- First and Last Run Dates -->
+        <!-- 首次和末次运行日期 -->
         <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--card-border);display:flex;justify-content:space-around;flex-wrap:wrap;gap:8px;">
           <div style="text-align:center;">
-            <div style="font-size:0.7rem;color:var(--muted);margin-bottom:2px;">First Run</div>
+            <div style="font-size:0.7rem;color:var(--muted);margin-bottom:2px;">首次运行</div>
             <div style="font-size:0.8rem;color:var(--text);font-weight:600;" id="stats-first">-</div>
           </div>
           <div style="text-align:center;">
-            <div style="font-size:0.7rem;color:var(--muted);margin-bottom:2px;">Last Run</div>
+            <div style="font-size:0.7rem;color:var(--muted);margin-bottom:2px;">末次运行</div>
             <div style="font-size:0.8rem;color:var(--text);font-weight:600;" id="stats-last">-</div>
           </div>
         </div>
       </div>
       <div id="stats-error" style="display:none;text-align:center;color:#f87171;padding:8px;font-size:0.9rem;">
-        Failed to load statistics
+        加载统计数据失败
       </div>
     </div>
 
-    <!-- Main configuration form -->
+    <!-- 主配置表单 -->
     <form method="post" action="{{ url_for('update') }}">
-      <!-- Schedule configuration section -->
-      <h2>Schedule</h2>
+      <!-- 计划配置部分 -->
+      <h2>计划任务</h2>
       <div class="card schedule">
-        <!-- Toggle for enabling/disabling the schedule -->
+        <!-- 启用/禁用计划切换开关 -->
         <div class="toggle-row">
-          <span class="label-text">Enable automatic schedule</span>
+          <span class="label-text">启用自动计划</span>
           <label class="switch">
             <input type="checkbox" name="schedule_enabled" id="schedule_enabled"
                    {% if config.get('schedule_enabled', true) %}checked{% endif %}>
@@ -433,21 +433,21 @@
         </div>
 
         <div class="row inline">
-          <!-- Frequency selector (daily/weekly/monthly) -->
+          <!-- 频率选择器（日/周/月） -->
           <div class="field">
-            <label for="frequency">Frequency</label><br/>
-            <select id="frequency" name="frequency" aria-label="Frequency">
-              <option value="daily" {% if config.frequency == 'daily' %}selected{% endif %}>Daily</option>
-              <option value="weekly" {% if config.frequency == 'weekly' %}selected{% endif %}>Weekly</option>
-              <option value="monthly" {% if config.frequency == 'monthly' %}selected{% endif %}>Monthly</option>
+            <label for="frequency">频率</label><br/>
+            <select id="frequency" name="frequency" aria-label="频率">
+              <option value="daily" {% if config.frequency == 'daily' %}selected{% endif %}>每日</option>
+              <option value="weekly" {% if config.frequency == 'weekly' %}selected{% endif %}>每周</option>
+              <option value="monthly" {% if config.frequency == 'monthly' %}selected{% endif %}>每月</option>
             </select>
           </div>
 
-          <!-- Time picker (24h or 12h format based on config) -->
+          <!-- 时间选择器（根据配置显示24h或12h格式） -->
           <div class="field">
-            <label for="time">Time</label><br />
+            <label for="time">时间</label><br />
             {% if use_24h %}
-            <!-- Native 24-hour time picker -->
+            <!-- 原生24小时时间选择器 -->
             <input
               type="time"
               id="time"
@@ -456,7 +456,7 @@
               required
             />
             {% else %}
-            <!-- 12-hour time picker -->
+            <!-- 12小时时间选择器 -->
             <div style="display: flex; gap: 8px; align-items: center;">
               <input 
                 type="number" 
@@ -478,26 +478,26 @@
                 style="width: 60px; text-align: center;"
               />
               <select id="time-period" name="time_period" required style="width: auto; min-width: 80px;">
-                <option value="AM">AM</option>
-                <option value="PM">PM</option>
+                <option value="AM">上午</option>
+                <option value="PM">下午</option>
               </select>
               <input type="hidden" id="time" name="time" value="{{ config.time or '03:00' }}" />
             </div>
             {% endif %}
           </div>
 
-          <!-- Day of week selector (shown for weekly frequency) -->
+          <!-- 星期选择器（每周频率时显示） -->
           <div id="week-row" class="field" style="display:none;">
-            <label for="day_of_week">Day of the week</label><br/>
+            <label for="day_of_week">星期几</label><br/>
             <select id="day_of_week" name="day_of_week">
               {% set days = [
-                ('mon', 'Monday'),
-                ('tue', 'Tuesday'),
-                ('wed', 'Wednesday'),
-                ('thu', 'Thursday'),
-                ('fri', 'Friday'),
-                ('sat', 'Saturday'),
-                ('sun', 'Sunday')
+                ('mon', '周一'),
+                ('tue', '周二'),
+                ('wed', '周三'),
+                ('thu', '周四'),
+                ('fri', '周五'),
+                ('sat', '周六'),
+                ('sun', '周日')
               ] %}
               {% for val, label in days %}
                 <option value="{{ val }}" {% if config.day_of_week == val %}selected{% endif %}>{{ label }}</option>
@@ -505,9 +505,9 @@
             </select>
           </div>
 
-          <!-- Day of month selector (shown for monthly frequency) -->
+          <!-- 月份日期选择器（每月频率时显示） -->
           <div id="month-row" class="field" style="display:none;">
-            <label for="day_of_month">Day of the month</label><br/>
+            <label for="day_of_month">每月几号</label><br/>
             <input
               type="number"
               id="day_of_month"
@@ -517,21 +517,21 @@
               value="{{ config.day_of_month or 1 }}"
             />
           </div>
-          <!-- Placeholder for grid alignment when daily is selected -->
+          <!-- 日模式下的占位单元格，保持网格对齐 -->
           <div id="schedule-placeholder" class="field" style="display:none;"></div>
         </div>
-       <!-- Timezone and time format information -->
+       <!-- 时区和时间格式信息 -->
        <p class="hint" style="margin-top:8px;">
-         Using Timezone: {{ timezone }} · Time format: {{ '24-hour' if use_24h else '12-hour (AM/PM)' }}<br>
+         当前时区: {{ timezone }} · 时间格式: {{ '24小时制' if use_24h else '12小时制（上午/下午）' }}<br>
        </p>
       </div>
 
-      <!-- Cleanup options section -->
-      <h2>Cleanup options</h2>
+      <!-- 清理选项部分 -->
+      <h2>清理选项</h2>
       <div class="card">
-        <!-- Toggle for pruning unused containers -->
+        <!-- 清理未使用容器切换开关 -->
         <div class="toggle-row">
-          <span class="label-text">All unused containers</span>
+          <span class="label-text">所有未使用的容器</span>
           <label class="switch">
             <input type="checkbox" name="prune_containers" id="prune_containers"
                    {% if config.prune_containers %}checked{% endif %}>
@@ -539,9 +539,9 @@
           </label>
         </div>
 
-        <!-- Toggle for pruning unused images -->
+        <!-- 清理未使用镜像切换开关 -->
         <div class="toggle-row">
-          <span class="label-text">All unused images</span>
+          <span class="label-text">所有未使用的镜像</span>
           <label class="switch">
             <input type="checkbox" name="prune_images" id="prune_images"
                    {% if config.prune_images %}checked{% endif %}>
@@ -549,9 +549,9 @@
           </label>
         </div>
 
-        <!-- Toggle for pruning unused networks -->
+        <!-- 清理未使用网络切换开关 -->
         <div class="toggle-row">
-          <span class="label-text">All unused networks</span>
+          <span class="label-text">所有未使用的网络</span>
           <label class="switch">
             <input type="checkbox" name="prune_networks" id="prune_networks"
                    {% if config.prune_networks %}checked{% endif %}>
@@ -559,9 +559,9 @@
           </label>
         </div>
 
-        <!-- Toggle for pruning unused volumes -->
+        <!-- 清理未使用卷切换开关 -->
         <div class="toggle-row">
-          <span class="label-text">All unused volumes</span>
+          <span class="label-text">所有未使用的卷</span>
           <label class="switch">
             <input type="checkbox" name="prune_volumes" id="prune_volumes"
                    {% if config.prune_volumes %}checked{% endif %}>
@@ -569,9 +569,9 @@
           </label>
         </div>
 
-        <!-- Toggle for pruning build cache -->
+        <!-- 清理构建缓存切换开关 -->
         <div class="toggle-row">
-          <span class="label-text">All build cache</span>
+          <span class="label-text">所有构建缓存</span>
           <label class="switch">
             <input type="checkbox" name="prune_build_cache" id="prune_build_cache"
                    {% if config.prune_build_cache %}checked{% endif %}>
@@ -580,127 +580,127 @@
         </div>
       </div>
 
-      <!-- Docker Hosts Management Section -->
-      <h2>Docker Hosts</h2>
-      <!-- Collapsible Docker hosts card -->
+      <!-- Docker主机管理部分 -->
+      <h2>Docker主机</h2>
+      <!-- 可折叠Docker主机卡片 -->
       <div class="card collapsed" id="hosts-card">
-        <!-- Collapsible header button -->
+        <!-- 可折叠头部按钮 -->
         <button type="button" id="hosts-header" aria-expanded="false" aria-controls="hosts-panel"
           style="all:unset;display:flex;width:100%;cursor:pointer;align-items:center;justify-content:space-between;padding:4px 0 8px 0;">
           <div style="display:flex;align-items:center;gap:10px;">
-            <!-- Docker/Server icon (simple style matching notifications) -->
+            <!-- Docker/服务器图标（与通知风格一致的简洁样式） -->
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-              <!-- Server/container stack -->
+              <!-- 服务器/容器堆叠 -->
               <rect x="2" y="3" width="20" height="5" rx="1" fill="none" stroke="#9ca3af" stroke-width="1.5"></rect>
               <rect x="2" y="10" width="20" height="5" rx="1" fill="none" stroke="#9ca3af" stroke-width="1.5"></rect>
               <rect x="2" y="17" width="20" height="4" rx="1" fill="none" stroke="#9ca3af" stroke-width="1.5"></rect>
-              <!-- Status dots -->
+              <!-- 状态点 -->
               <circle cx="5" cy="5.5" r="0.8" fill="#9ca3af"></circle>
               <circle cx="5" cy="12.5" r="0.8" fill="#9ca3af"></circle>
               <circle cx="5" cy="19" r="0.8" fill="#9ca3af"></circle>
             </svg>
             <div>
-              <strong>External Docker hosts</strong>
-              <div class="hint">Connect to remote Docker hosts via TCP docker-socket-proxy</div>
+              <strong>外部Docker主机</strong>
+              <div class="hint">通过TCP docker-socket-proxy连接到远程Docker主机</div>
             </div>
           </div>
           <span id="hosts-arrow" style="font-size:1.05rem;transition:.2s;">▼</span>
         </button>
 
-        <!-- Collapsible hosts panel -->
+        <!-- 可折叠主机面板 -->
         <div id="hosts-panel" style="overflow:hidden;">
           <p style="color:var(--muted);font-size:0.9rem;margin:12px 0;">
-            Add external Docker hosts using <code style="background:rgba(14,165,233,0.08);padding:2px 6px;border-radius:4px;font-size:0.85rem;">tcp://host:2375</code>. <strong>This function requires a <a href="https://github.com/Tecnativa/docker-socket-proxy" target="_blank" style="color:#0ea5e9;text-decoration:none;">docker-socket-proxy</a> container running on each remote host.</strong> See the <a href="https://github.com/anoniemerd/PruneMate" target="_blank" style="color:#0ea5e9;text-decoration:none;">GitHub repo</a> for an example docker-compose.yaml for the docker-socket-proxy.
+            使用<code style="background:rgba(14,165,233,0.08);padding:2px 6px;border-radius:4px;font-size:0.85rem;">tcp://host:2375</code>添加外部Docker主机。 <strong>此功能要求每个远程主机上运行<a href="https://github.com/Tecnativa/docker-socket-proxy" target="_blank" style="color:#0ea5e9;text-decoration:none;">docker-socket-proxy</a>容器。</strong> 请查看<a href="https://github.com/anoniemerd/PruneMate" target="_blank" style="color:#0ea5e9;text-decoration:none;">GitHub仓库</a>中的docker-socket-proxy示例docker-compose.yaml。
           </p>
           
-          <!-- Hosts List -->
+          <!-- 主机列表 -->
           <div id="hosts-list" style="margin-bottom:16px;">
-            <!-- Populated by JavaScript -->
+            <!-- 由JavaScript填充 -->
           </div>
           
-          <!-- Add New Host Form -->
+          <!-- 添加新主机表单 -->
           <div style="border-top:1px solid var(--card-border);padding-top:12px;margin-top:12px;">
-            <h3 style="font-size:0.9rem;margin-bottom:10px;color:var(--text);">Add New Host</h3>
+            <h3 style="font-size:0.9rem;margin-bottom:10px;color:var(--text);">添加新主机</h3>
             <div style="display:grid;grid-template-columns:1fr 2fr auto;gap:10px;align-items:end;">
               <div class="field">
-                <label for="new-host-name">Name</label>
-                <input type="text" id="new-host-name" name="new-host-name" placeholder="Server 1" style="width:100%;" />
+                <label for="new-host-name">名称</label>
+                <input type="text" id="new-host-name" name="new-host-name" placeholder="服务器1" style="width:100%;" />
               </div>
               <div class="field">
                 <label for="new-host-url">URL</label>
                 <input type="text" id="new-host-url" name="new-host-url" placeholder="tcp://192.168.1.10:2375" style="width:100%;" />
               </div>
-              <button type="button" onclick="addNewHost()" class="btn btn-secondary" style="margin:0;">Add Host</button>
+              <button type="button" onclick="addNewHost()" class="btn btn-secondary" style="margin:0;">添加主机</button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Notifications configuration section -->
-      <h2>Notifications</h2>
-      <!-- Collapsible notification settings card -->
+      <!-- 通知配置部分 -->
+      <h2>通知设置</h2>
+      <!-- 可折叠通知设置卡片 -->
       <div class="card collapsed" id="notif-card">
-        <!-- Collapsible header button -->
+        <!-- 可折叠头部按钮 -->
         <button type="button" id="notif-header" aria-expanded="false" aria-controls="notif-panel"
           style="all:unset;display:flex;width:100%;cursor:pointer;align-items:center;justify-content:space-between;padding:4px 0 8px 0;">
           <div style="display:flex;align-items:center;gap:10px;">
-            <!-- Notification bell icon -->
+            <!-- 通知铃铛图标 -->
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
               <path d="M15 17H9a3 3 0 0 0 6 0z" fill="#9ca3af"></path>
               <path d="M12 3a5 5 0 0 0-5 5v2.2a5 5 0 0 1-.9 2.8L5 15h14l-1.1-1.0a5 5 0 0 1-.9-2.8V8a5 5 0 0 0-5-5z" fill="#9ca3af"></path>
             </svg>
             <div>
-              <strong>Notification settings</strong>
-              <div class="hint">Select provider & configure fields</div>
+              <strong>通知设置</strong>
+              <div class="hint">选择提供商并配置字段</div>
             </div>
           </div>
           <span id="notif-arrow" style="font-size:1.05rem;transition:.2s;">▼</span>
         </button>
 
-        <!-- Collapsible notification settings panel -->
+        <!-- 可折叠通知设置面板 -->
         <div id="notif-panel" style="overflow:hidden;">
           <div class="row inline" style="margin-top:4px;">
-            <!-- Notification provider selector -->
+            <!-- 通知提供商选择器 -->
             <div class="field" style="flex:0 0 auto;min-width:150px;max-width:200px;">
-              <label for="notifications_provider">Provider</label><br/>
-              <select id="notifications_provider" name="notifications_provider" aria-label="Notification provider" style="width:100%;">
+              <label for="notifications_provider">提供商</label><br/>
+              <select id="notifications_provider" name="notifications_provider" aria-label="通知提供商" style="width:100%;">
                 <option value="gotify" {% if config.notifications.provider == 'gotify' %}selected{% endif %}>Gotify</option>
                 <option value="ntfy" {% if config.notifications.provider == 'ntfy' %}selected{% endif %}>ntfy</option>
                 <option value="discord" {% if config.notifications.provider == 'discord' %}selected{% endif %}>Discord</option>
                 <option value="telegram" {% if config.notifications.provider == 'telegram' %}selected{% endif %}>Telegram</option>
               </select>
             </div>
-            <!-- Notification priority selector -->
+            <!-- 通知优先级选择器 -->
             <div class="field" style="flex:0 0 auto;min-width:120px;">
-              <label for="notification_priority">Priority</label><br/>
+              <label for="notification_priority">优先级</label><br/>
               <select 
                 id="notification_priority" 
                 name="notification_priority"
                 style="width: 100px;"
-                aria-label="Notification priority"
+                aria-label="通知优先级"
               >
-                <option value="low" {% if config.notifications.priority == 'low' %}selected{% endif %}>Low</option>
-                <option value="medium" {% if config.notifications.priority == 'medium' %}selected{% endif %}>Medium</option>
-                <option value="high" {% if config.notifications.priority == 'high' %}selected{% endif %}>High</option>
+                <option value="low" {% if config.notifications.priority == 'low' %}selected{% endif %}>低</option>
+                <option value="medium" {% if config.notifications.priority == 'medium' %}selected{% endif %}>中</option>
+                <option value="high" {% if config.notifications.priority == 'high' %}selected{% endif %}>高</option>
               </select>
             </div>
           </div>
-          <!-- 'Only notify when changes' toggle (dynamically repositioned per provider) -->
+          <!-- '仅在发生变化时通知'切换开关（根据提供商动态重新定位） -->
           <div id="only-on-changes-wrapper" style="margin-top:6px;">
             <div class="toggle-row" style="padding:4px 0 0 0;">
-              <span class="label-text" id="only-on-changes-label">Only notify when something was pruned</span>
+              <span class="label-text" id="only-on-changes-label">仅在清理了资源时通知</span>
               <label class="switch">
                 <input type="checkbox" name="notifications_only_on_changes" id="notifications_only_on_changes" aria-labelledby="only-on-changes-label" {% if config.notifications.only_on_changes %}checked{% endif %}>
                 <span class="slider"></span>
               </label>
             </div>
-            <div class="hint" style="margin:2px 0 14px 0; text-align:right;">*When disabled, PruneMate sends a notification after every run.</div>
+            <div class="hint" style="margin:2px 0 14px 0; text-align:right;">*当禁用时，PruneMate会在每次运行后发送通知。</div>
           </div>
 
-          <!-- Gotify specific fields -->
+          <!-- Gotify特定字段 -->
           <div id="gotify-fields" style="margin-top:12px;">
             <div class="toggle-row">
-              <span class="label-text" id="gotify-enable-label">Enable Gotify notifications</span>
+              <span class="label-text" id="gotify-enable-label">启用Gotify通知</span>
               <label class="switch">
                 <input type="checkbox" name="gotify_enabled" id="gotify_enabled" aria-labelledby="gotify-enable-label"
                        {% if config.notifications.gotify.enabled %}checked{% endif %}>
@@ -712,23 +712,23 @@
                 <label for="gotify_url">Gotify URL :</label>
                 <input type="text" id="gotify_url" name="gotify_url"
                        value="{{ config.notifications.gotify.url or '' }}"
-                       placeholder="https://gotify.example.com" aria-label="Gotify server URL">
+                       placeholder="https://gotify.example.com" aria-label="Gotify服务器URL">
               </div>
             </div>
             <div class="row" style="margin-top:6px;">
               <div style="flex:1;">
-                <label for="gotify_token">Gotify App Token :</label>
+                <label for="gotify_token">Gotify应用令牌 :</label>
                 <input type="password" id="gotify_token" name="gotify_token" autocomplete="off"
                        value="{{ config.notifications.gotify.token or '' }}"
-                       placeholder="App token" aria-label="Gotify application token">
+                       placeholder="应用令牌" aria-label="Gotify应用令牌">
               </div>
             </div>
           </div>
 
-          <!-- ntfy specific fields -->
+          <!-- ntfy特定字段 -->
           <div id="ntfy-fields" style="margin-top:12px;display:none;">
             <div class="toggle-row">
-              <span class="label-text" id="ntfy-enable-label">Enable ntfy notifications</span>
+              <span class="label-text" id="ntfy-enable-label">启用ntfy通知</span>
               <label class="switch">
                 <input type="checkbox" name="ntfy_enabled" id="ntfy_enabled" aria-labelledby="ntfy-enable-label"
                        {% if config.notifications.ntfy.enabled %}checked{% endif %}>
@@ -740,31 +740,31 @@
                 <label for="ntfy_url">ntfy URL :</label>
                 <input type="text" id="ntfy_url" name="ntfy_url"
                        value="{{ config.notifications.ntfy.url or '' }}"
-                       placeholder="https://ntfy.sh" aria-label="ntfy server URL">
+                       placeholder="https://ntfy.sh" aria-label="ntfy服务器URL">
               </div>
             </div>
             <div class="row" style="margin-top:6px;">
               <div style="flex:1;">
-                <label for="ntfy_topic">ntfy Topic :</label>
+                <label for="ntfy_topic">ntfy主题 :</label>
                 <input type="text" id="ntfy_topic" name="ntfy_topic"
                        value="{{ config.notifications.ntfy.topic or '' }}"
-                       placeholder="topic/name" aria-label="ntfy topic name">
+                       placeholder="topic/name" aria-label="ntfy主题名称">
               </div>
             </div>
             <div class="row" style="margin-top:6px;">
               <div style="flex:1;">
-                <label for="ntfy_token">ntfy Token (optional) :</label>
+                <label for="ntfy_token">ntfy令牌（可选） :</label>
                 <input type="password" id="ntfy_token" name="ntfy_token"
                        value="{{ config.notifications.ntfy.token or '' }}"
-                       placeholder="Bearer token (optional)" aria-label="ntfy bearer token">
+                       placeholder="Bearer令牌（可选）" aria-label="ntfy Bearer令牌">
               </div>
             </div>
           </div>
 
-          <!-- Discord specific fields -->
+          <!-- Discord特定字段 -->
           <div id="discord-fields" style="margin-top:12px;display:none;">
             <div class="toggle-row">
-              <span class="label-text" id="discord-enable-label">Enable Discord notifications</span>
+              <span class="label-text" id="discord-enable-label">启用Discord通知</span>
               <label class="switch">
                 <input type="checkbox" name="discord_enabled" id="discord_enabled" aria-labelledby="discord-enable-label"
                        {% if config.notifications.discord.enabled %}checked{% endif %}>
@@ -776,15 +776,15 @@
                 <label for="discord_webhook_url">Discord Webhook URL :</label>
                 <input type="text" id="discord_webhook_url" name="discord_webhook_url"
                        value="{{ config.notifications.discord.webhook_url or '' }}"
-                       placeholder="https://discord.com/api/webhooks/..." aria-label="Discord webhook URL">
+                       placeholder="https://discord.com/api/webhooks/..." aria-label="Discord Webhook URL">
               </div>
             </div>
           </div>
 
-          <!-- Telegram specific fields -->
+          <!-- Telegram特定字段 -->
           <div id="telegram-fields" style="margin-top:12px;display:none;">
             <div class="toggle-row">
-              <span class="label-text" id="telegram-enable-label">Enable Telegram notifications</span>
+              <span class="label-text" id="telegram-enable-label">启用Telegram通知</span>
               <label class="switch">
                 <input type="checkbox" name="telegram_enabled" id="telegram_enabled" aria-labelledby="telegram-enable-label"
                        {% if config.notifications.telegram.enabled %}checked{% endif %}>
@@ -793,7 +793,7 @@
             </div>
             <div class="row" style="margin-top:6px;">
               <div style="flex:1;">
-                <label for="telegram_bot_token">Bot Token :</label>
+                <label for="telegram_bot_token">Bot令牌 :</label>
                 <input type="password" id="telegram_bot_token" name="telegram_bot_token" autocomplete="off"
                        value="{{ config.notifications.telegram.bot_token or '' }}"
                        placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" aria-label="Telegram bot token from @BotFather">
@@ -815,7 +815,7 @@
                     class="btn btn-secondary"
                     formaction="{{ url_for('test_notification') }}"
                     formmethod="post">
-              Send test notification
+              发送测试通知
             </button>
           </div>
         </div>
@@ -824,7 +824,7 @@
       <!-- Save and schedule button -->
       <div style="margin-top: 10px;">
         <button type="submit" class="btn btn-primary">
-          Save &amp; Schedule
+          保存并计划
         </button>
       </div>
     </form>
@@ -832,14 +832,14 @@
     <!-- Manual prune trigger form -->
     <form method="post" action="{{ url_for('run_now') }}" style="margin-top: 6px; display: none;" id="old-run-form" onsubmit="setTimeout(loadStats, 1000);">
       <button type="submit" class="btn btn-secondary">
-        Run now
+        立即运行
       </button>
     </form>
 
     <!-- Manual prune with preview -->
     <div style="margin-top: 6px;">
       <button type="button" class="btn btn-secondary" onclick="showPrunePreview()">
-        Preview & Run
+        预览并运行
       </button>
     </div>
 
@@ -854,21 +854,21 @@
   <div id="prunePreviewModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 1000; overflow-y: auto; padding: 20px;">
     <div style="max-width: 900px; margin: 40px auto; background: linear-gradient(180deg, rgba(18,25,44,0.98), rgba(8,12,22,0.98)); border-radius: 24px; padding: 28px; border: 1px solid rgba(148,163,184,0.15); box-shadow: 0 32px 70px rgba(0,0,0,0.75);">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text);">🔍 Prune Preview</h2>
+        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text);">🔍 清理预览</h2>
         <button onclick="closePrunePreview()" style="background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s;">&times;</button>
       </div>
       
       <div id="previewContent" style="min-height: 200px;">
         <div style="text-align: center; padding: 40px; color: var(--muted);">
           <div style="font-size: 2rem; margin-bottom: 12px;">⏳</div>
-          <p>Loading preview...</p>
+          <p>加载预览中...</p>
         </div>
       </div>
       
       <div id="previewActions" style="display: flex; flex-direction: row; margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(148,163,184,0.1); gap: 12px; justify-content: flex-end; visibility: hidden;">
-        <button onclick="closePrunePreview()" class="btn" style="background: rgba(148,163,184,0.08); color: var(--text);">Cancel</button>
+        <button onclick="closePrunePreview()" class="btn" style="background: rgba(148,163,184,0.08); color: var(--text);">取消</button>
         <button onclick="executeConfirmedPrune()" class="btn btn-secondary" id="confirmPruneBtn" style="display: none;">
-          ✓ Confirm & Execute
+          ✓ 确认并执行
         </button>
       </div>
     </div>
@@ -1221,7 +1221,7 @@
             // Host status indicator
             const statusDot = document.createElement('div');
             statusDot.style.cssText = `width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${host.enabled ? '#22c55e' : '#6b7280'};`;
-            statusDot.title = host.enabled ? 'Enabled' : 'Disabled';
+            statusDot.title = host.enabled ? '已启用' : '已禁用';
             
             // Host info
             const infoDiv = document.createElement('div');
@@ -1246,7 +1246,7 @@
             const toggleBtn = document.createElement('button');
             toggleBtn.type = 'button';
             toggleBtn.innerHTML = host.enabled ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
-            toggleBtn.title = host.enabled ? 'Disable' : 'Enable';
+            toggleBtn.title = host.enabled ? '禁用' : '启用';
             toggleBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:8px;border:1px solid var(--card-border);background:rgba(14,165,233,0.06);color:var(--text);border-radius:6px;cursor:pointer;font-size:0.9rem;transition:all 0.2s;';
             toggleBtn.onmouseover = () => toggleBtn.style.background = 'rgba(14,165,233,0.12)';
             toggleBtn.onmouseout = () => toggleBtn.style.background = 'rgba(14,165,233,0.06)';
@@ -1256,7 +1256,7 @@
             const editBtn = document.createElement('button');
             editBtn.type = 'button';
             editBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
-            editBtn.title = 'Edit';
+            editBtn.title = '编辑';
             editBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:8px;border:1px solid var(--card-border);background:rgba(251,191,36,0.06);color:var(--text);border-radius:6px;cursor:pointer;font-size:0.9rem;transition:all 0.2s;';
             editBtn.onmouseover = () => editBtn.style.background = 'rgba(251,191,36,0.12)';
             editBtn.onmouseout = () => editBtn.style.background = 'rgba(251,191,36,0.06)';
@@ -1266,7 +1266,7 @@
             const deleteBtn = document.createElement('button');
             deleteBtn.type = 'button';
             deleteBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
-            deleteBtn.title = 'Delete';
+            deleteBtn.title = '删除';
             deleteBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:8px;border:1px solid var(--card-border);background:rgba(239,68,68,0.06);color:var(--text);border-radius:6px;cursor:pointer;font-size:0.9rem;transition:all 0.2s;';
             deleteBtn.onmouseover = () => deleteBtn.style.background = 'rgba(239,68,68,0.12)';
             deleteBtn.onmouseout = () => deleteBtn.style.background = 'rgba(239,68,68,0.06)';
@@ -1285,7 +1285,7 @@
         })
         .catch(err => {
           console.error('Error loading hosts:', err);
-          hostsList.innerHTML = '<div style="color:#f87171;font-size:0.9rem;padding:8px;">Failed to load hosts</div>';
+          hostsList.innerHTML = '<div style="color:#f87171;font-size:0.9rem;padding:8px;">加载主机失败</div>';
         });
     }
 
@@ -1308,21 +1308,21 @@
               mainForm.submit();
             }
           } else {
-            alert('Failed to toggle host: ' + (data.error || 'Unknown error'));
+            alert('切换主机失败: ' + (data.error || '未知错误'));
           }
         })
         .catch(err => {
           console.error('Error toggling host:', err);
-          alert('Failed to toggle host');
+          alert('切换主机失败');
         });
     }
 
     // Edit host (prompt for new values) - Config auto-saves after update
     function editHost(index, host){
-      const newName = prompt('Host name:', host.name);
+      const newName = prompt('主机名称:', host.name);
       if (!newName || newName === host.name) {
         // Check if URL should be updated
-        const newUrl = prompt('Host URL:', host.url);
+        const newUrl = prompt('主机URL:', host.url);
         if (!newUrl) return;
         
         const form = document.createElement('form');
@@ -1339,7 +1339,7 @@
         return;
       }
       
-      const newUrl = prompt('Host URL:', host.url);
+      const newUrl = prompt('主机URL:', host.url);
       if (!newUrl) return;
       
       const form = document.createElement('form');
@@ -1357,7 +1357,7 @@
 
     // Delete host with confirmation - Config auto-saves after deletion
     function deleteHost(index, hostName){
-      if (!confirm(`Are you sure you want to delete host "${hostName}"?`)) return;
+      if (!confirm(`确定要删除主机 "${hostName}"?`)) return;
       
       const form = document.createElement('form');
       form.method = 'POST';
@@ -1376,7 +1376,7 @@
       const url = urlInput.value.trim();
       
       if (!name || !url) {
-        alert('Please enter both host name and URL');
+        alert('请输入主机名称和URL');
         return;
       }
       
@@ -1565,7 +1565,7 @@
         const hasItems = totals.containers > 0 || totals.images > 0 || totals.networks > 0 || totals.volumes > 0 || totals.build_cache > 0;
         
         if (!hasItems) {
-          html = '<div style="text-align: center; padding: 40px; color: var(--accent-strong);"><div style="font-size: 2rem; margin-bottom: 12px;">✅</div><p style="font-size: 1.1rem; margin-bottom: 8px;">Nothing to prune!</p><p style="color: var(--muted); font-size: 0.9rem;">Your Docker resources are already clean.</p></div>';
+          html = '<div style="text-align: center; padding: 40px; color: var(--accent-strong);"><div style="font-size: 2rem; margin-bottom: 12px;">✅</div><p style="font-size: 1.1rem; margin-bottom: 8px;">没有需要清理的资源！</p><p style="color: var(--muted); font-size: 0.9rem;">您的Docker资源已清理完毕。</p></div>';
           content.innerHTML = html;
           actions.style.visibility = 'visible';
           const confirmBtn = document.getElementById('confirmPruneBtn');
@@ -1575,23 +1575,23 @@
         
         // Summary
         html += '<div style="background: rgba(14,165,233,0.08); border: 1px solid rgba(14,165,233,0.2); border-radius: 16px; padding: 20px; margin-bottom: 24px;">';
-        html += '<h3 style="margin: 0 0 16px 0; color: var(--text); font-size: 1.1rem;">📊 Summary</h3>';
+        html += '<h3 style="margin: 0 0 16px 0; color: var(--text); font-size: 1.1rem;">📊 总结</h3>';
         html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">';
         
         if (totals.containers > 0) {
-          html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.containers + '</div><div style="color: var(--muted); font-size: 0.85rem;">Containers</div></div>';
+          html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.containers + '</div><div style="color: var(--muted); font-size: 0.85rem;">容器</div></div>';
         }
         if (totals.images > 0) {
-          html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.images + '</div><div style="color: var(--muted); font-size: 0.85rem;">Images</div></div>';
+          html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.images + '</div><div style="color: var(--muted); font-size: 0.85rem;">镜像</div></div>';
         }
         if (totals.networks > 0) {
-          html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.networks + '</div><div style="color: var(--muted); font-size: 0.85rem;">Networks</div></div>';
+          html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.networks + '</div><div style="color: var(--muted); font-size: 0.85rem;">网络</div></div>';
         }
         if (totals.volumes > 0) {
-          html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.volumes + '</div><div style="color: var(--muted); font-size: 0.85rem;">Volumes</div></div>';
+          html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.volumes + '</div><div style="color: var(--muted); font-size: 0.85rem;">卷</div></div>';
         }
         if (totals.build_cache > 0) {
-          html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.build_cache + '</div><div style="color: var(--muted); font-size: 0.85rem;">Build Cache</div></div>';
+          html += '<div style="text-align: center;"><div style="font-size: 1.8rem; color: var(--accent); margin-bottom: 4px;">' + totals.build_cache + '</div><div style="color: var(--muted); font-size: 0.85rem;">构建缓存</div></div>';
         }
         
         html += '</div></div>';
@@ -1602,7 +1602,7 @@
             if (!host.success) {
               html += '<div style="background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); border-radius: 12px; padding: 16px; margin-bottom: 16px;">';
               html += '<h4 style="margin: 0 0 8px 0; color: #fca5a5;">❌ ' + host.name + '</h4>';
-              html += '<p style="color: var(--muted); margin: 0; font-size: 0.9rem;">' + (host.error || 'Failed to connect') + '</p>';
+              html += '<p style="color: var(--muted); margin: 0; font-size: 0.9rem;">' + (host.error || '连接失败') + '</p>';
               html += '</div>';
               return;
             }
@@ -1615,34 +1615,34 @@
             
             // Containers
             if (host.containers && host.containers.length > 0) {
-              html += '<div style="margin-bottom: 12px;"><strong style="color: var(--accent); font-size: 0.9rem;">🗑️ Containers (' + host.containers.length + '):</strong>';
+              html += '<div style="margin-bottom: 12px;"><strong style="color: var(--accent); font-size: 0.9rem;">🗑️ 容器 (' + host.containers.length + '):</strong>';
               html += '<div style="margin-top: 6px; max-height: 120px; overflow-y: auto; font-size: 0.85rem; color: var(--muted);">';
               host.containers.slice(0, 10).forEach(c => {
                 html += '<div style="padding: 4px 0;">• ' + (c.name || c.id) + ' <span style="color: #6b7280;">(' + c.status + ')</span></div>';
               });
               if (host.containers.length > 10) {
-                html += '<div style="padding: 4px 0; font-style: italic;">... and ' + (host.containers.length - 10) + ' more</div>';
+                html += '<div style="padding: 4px 0; font-style: italic;">... 以及 ' + (host.containers.length - 10) + ' 个更多</div>';
               }
               html += '</div></div>';
             }
             
             // Images
             if (host.images && host.images.length > 0) {
-              html += '<div style="margin-bottom: 12px;"><strong style="color: var(--accent); font-size: 0.9rem;">💿 Images (' + host.images.length + '):</strong>';
+              html += '<div style="margin-bottom: 12px;"><strong style="color: var(--accent); font-size: 0.9rem;">💿 镜像 (' + host.images.length + '):</strong>';
               html += '<div style="margin-top: 6px; max-height: 120px; overflow-y: auto; font-size: 0.85rem; color: var(--muted);">';
               host.images.slice(0, 10).forEach(img => {
                 const tags = img.tags.join(', ') || img.id;
                 html += '<div style="padding: 4px 0;">• ' + tags + ' <span style="color: #6b7280;">(' + img.size + ')</span></div>';
               });
               if (host.images.length > 10) {
-                html += '<div style="padding: 4px 0; font-style: italic;">... and ' + (host.images.length - 10) + ' more</div>';
+                html += '<div style="padding: 4px 0; font-style: italic;">... 以及 ' + (host.images.length - 10) + ' 个更多</div>';
               }
               html += '</div></div>';
             }
             
             // Networks
             if (host.networks && host.networks.length > 0) {
-              html += '<div style="margin-bottom: 12px;"><strong style="color: var(--accent); font-size: 0.9rem;">🌐 Networks (' + host.networks.length + '):</strong>';
+              html += '<div style="margin-bottom: 12px;"><strong style="color: var(--accent); font-size: 0.9rem;">🌐 网络 (' + host.networks.length + '):</strong>';
               html += '<div style="margin-top: 6px; max-height: 100px; overflow-y: auto; font-size: 0.85rem; color: var(--muted);">';
               host.networks.forEach(net => {
                 html += '<div style="padding: 4px 0;">• ' + net.name + '</div>';
@@ -1652,7 +1652,7 @@
             
             // Volumes
             if (host.volumes && host.volumes.length > 0) {
-              html += '<div style="margin-bottom: 12px;"><strong style="color: var(--accent); font-size: 0.9rem;">📦 Volumes (' + host.volumes.length + '):</strong>';
+              html += '<div style="margin-bottom: 12px;"><strong style="color: var(--accent); font-size: 0.9rem;">📦 卷 (' + host.volumes.length + '):</strong>';
               html += '<div style="margin-top: 6px; max-height: 100px; overflow-y: auto; font-size: 0.85rem; color: var(--muted);">';
               host.volumes.forEach(vol => {
                 html += '<div style="padding: 4px 0;">• ' + vol.name + '</div>';
@@ -1662,13 +1662,13 @@
             
             // Build Cache
             if (host.build_cache && host.build_cache.length > 0) {
-              html += '<div style="margin-bottom: 12px;"><strong style="color: var(--accent); font-size: 0.9rem;">🏗️ Build Cache (' + host.build_cache.length + '):</strong>';
+              html += '<div style="margin-bottom: 12px;"><strong style="color: var(--accent); font-size: 0.9rem;">🏗️ 构建缓存 (' + host.build_cache.length + '):</strong>';
               html += '<div style="margin-top: 6px; max-height: 100px; overflow-y: auto; font-size: 0.85rem; color: var(--muted);">';
               host.build_cache.slice(0, 10).forEach(cache => {
                 html += '<div style="padding: 4px 0;">• ' + cache.id + ' (' + cache.type + ', ' + cache.size + ')</div>';
               });
               if (host.build_cache.length > 10) {
-                html += '<div style="padding: 4px 0; font-style: italic;">... and ' + (host.build_cache.length - 10) + ' more</div>';
+                html += '<div style="padding: 4px 0; font-style: italic;">... 以及 ' + (host.build_cache.length - 10) + ' 个更多</div>';
               }
               html += '</div></div>';
             }
@@ -1683,7 +1683,7 @@
         if (confirmBtn) confirmBtn.style.display = hasItems ? 'block' : 'none';
       })
       .catch(error => {
-        content.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;"><div style="font-size: 2rem; margin-bottom: 12px;">❌</div><p>Failed to load preview</p><p style="font-size: 0.85rem; color: var(--muted); margin-top: 8px;">' + error.message + '</p></div>';
+        content.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;"><div style="font-size: 2rem; margin-bottom: 12px;">❌</div><p>加载预览失败</p><p style="font-size: 0.85rem; color: var(--muted); margin-top: 8px;">' + error.message + '</p></div>';
         actions.style.visibility = 'visible';
         const confirmBtn = document.getElementById('confirmPruneBtn');
         if (confirmBtn) confirmBtn.style.display = 'none';
@@ -1700,7 +1700,7 @@
       
       const originalText = btn.innerHTML;
       btn.disabled = true;
-      btn.innerHTML = '⏳ Executing...';
+      btn.innerHTML = '⏳ 执行中...';
       
       // Collect current prune settings from checkboxes (in case they changed between preview and confirm)
       const pruneSettings = {
@@ -1723,10 +1723,10 @@
         if (!content || !actions) return;
         
         if (data.success) {
-          content.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--accent-strong);"><div style="font-size: 2rem; margin-bottom: 12px;">✅</div><p style="font-size: 1.1rem; margin-bottom: 8px;">Prune completed successfully!</p><p style="color: var(--muted); font-size: 0.9rem;">Check the logs for detailed results.</p></div>';
-          actions.innerHTML = '<button onclick="closePrunePreview(); setTimeout(loadStats, 500);" class="btn btn-secondary">Close</button>';
+          content.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--accent-strong);"><div style="font-size: 2rem; margin-bottom: 12px;">✅</div><p style="font-size: 1.1rem; margin-bottom: 8px;">清理成功完成！</p><p style="color: var(--muted); font-size: 0.9rem;">查看日志获取详细结果。</p></div>';
+          actions.innerHTML = '<button onclick="closePrunePreview(); setTimeout(loadStats, 500);" class="btn btn-secondary">关闭</button>';
         } else {
-          content.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;"><div style="font-size: 2rem; margin-bottom: 12px;">⚠️</div><p>' + (data.message || 'Unknown error') + '</p></div>';
+          content.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;"><div style="font-size: 2rem; margin-bottom: 12px;">⚠️</div><p>' + (data.message || '未知错误') + '</p></div>';
           btn.disabled = false;
           btn.innerHTML = originalText;
         }
@@ -1734,7 +1734,7 @@
       .catch(error => {
         const content = document.getElementById('previewContent');
         if (content) {
-          content.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;"><div style="font-size: 2rem; margin-bottom: 12px;">❌</div><p>Execution failed</p><p style="font-size: 0.85rem; color: var(--muted); margin-top: 8px;">' + (error.message || 'Unknown error') + '</p></div>';
+          content.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;"><div style="font-size: 2rem; margin-bottom: 12px;">❌</div><p>执行失败</p><p style="font-size: 0.85rem; color: var(--muted); margin-top: 8px;">' + (error.message || '未知错误') + '</p></div>';
         }
         btn.disabled = false;
         btn.innerHTML = originalText;
